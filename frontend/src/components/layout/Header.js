@@ -25,6 +25,7 @@ import { HamburgerIcon, CloseIcon, SearchIcon } from "@chakra-ui/icons";
 import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom";
 import React, { useContext, useState } from "react";
 import { AuthContext } from "../../contexts/AuthContext";
+import GenreDropdown from "../GenreDropdown";
 
 // Thay thế bằng logo thực của bạn trong thư mục frontend/src/assets/logo.png
 const Logo = () => (
@@ -63,7 +64,6 @@ const NavLinks = [
   { name: "Phim Mới", path: "/movies/latest" },
   { name: "Phim Lẻ", path: "/movies/single" },
   { name: "Phim Bộ", path: "/movies/series" },
-  { name: "Thể Loại", path: "/genres" },
   { name: "Diễn Đàn", path: "/forum" },
 ];
 
@@ -112,12 +112,14 @@ export default function Header() {
               as={"nav"}
               spacing={4}
               display={{ base: "none", md: "flex" }}
+              alignItems="center"
             >
               {NavLinks.map((link) => (
                 <NavLink key={link.name} to={link.path}>
                   {link.name}
                 </NavLink>
               ))}
+              <GenreDropdown currentGenreLabel="Thể Loại" />
             </HStack>
           </HStack>
           <Flex alignItems={"center"} gap={{ base: 2, md: 4 }}>
@@ -223,6 +225,9 @@ export default function Header() {
                   {link.name}
                 </NavLink>
               ))}
+              <Box pl={2} py={1}>
+                <GenreDropdown currentGenreLabel="Thể Loại" />
+              </Box>
             </Stack>
           </Box>
         ) : null}

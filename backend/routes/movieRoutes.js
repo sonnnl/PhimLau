@@ -8,6 +8,8 @@ import {
   searchMovies,
   getSingleMovies,
   getSeriesMovies,
+  getMovieGenres,
+  getMovieCountries,
 } from "../controllers/movieController.js"; // Thêm .js extension nếu cần
 
 // @route   GET /api/movies/latest
@@ -34,5 +36,15 @@ router.get("/details/:slug", getMovieDetailsBySlug);
 // @desc    Tìm kiếm phim theo từ khóa
 // @access  Public
 router.get("/search", searchMovies);
+
+// @route   GET /api/movies/genres
+// @desc    Lấy danh sách thể loại phim
+// @access  Public
+router.get("/genres", getMovieGenres);
+
+// @route   GET /api/movies/countries
+// @desc    Lấy danh sách quốc gia phim
+// @access  Public
+router.get("/countries", getMovieCountries);
 
 export default router;

@@ -139,21 +139,62 @@ const getMovieDetailsBySlug = async (req, res) => {
 
 // GET /api/movies/search
 // Tìm kiếm phim theo từ khóa (trang mặc định là 1)
+// Đã nâng cấp để hỗ trợ tìm kiếm nâng cao với nhiều tham số
 const searchMovies = async (req, res) => {
-  const { keyword, page = 1 } = req.query;
-  if (!keyword) {
-    return res.status(400).json({ message: "Từ khóa tìm kiếm là bắt buộc." });
-  }
-  try {
-    const response = await axios.get(
-      `${PHIM_API_DOMAIN}/v1/api/tim-kiem?keyword=${encodeURIComponent(
-        keyword
-      )}&page=${page}`
-    );
-    // Log để kiểm tra
-    // console.log(`API Response Data for Search (${keyword}, page ${page}):`, JSON.stringify(response.data, null, 2));
+  const {
+    keyword,
+    page = 1,
+    limit = 20, // Giới hạn mặc định nếu không được cung cấp
+    category,
+    country,
+    year,
+    sort_field,
+    sort_type,
+    sort_lang,
+  } = req.query;
 
-    // API tìm kiếm có cấu trúc data.data.items và data.data.params.pagination
+  // Từ khóa vẫn là bắt buộc cho endpoint /v1/api/tim-kiem của API nguồn
+  // Tuy nhiên, nếu chúng ta muốn tìm kiếm nâng cao mà không cần keyword,
+  // API nguồn có thể không hỗ trợ trực tiếp.
+  // Tạm thời vẫn yêu cầu keyword hoặc xử lý logic nếu API nguồn cho phép keyword rỗng.
+  // Theo tài liệu API: "keyword = Từ khóa bạn cần tìm kiếm."
+  // Nếu không có keyword, có thể trả về lỗi hoặc không gọi API.
+  // Giả sử người dùng có thể muốn tìm kiếm chỉ theo thể loại, quốc gia mà không cần keyword.
+  // API /v1/api/tim-kiem có vẻ bắt buộc keyword.
+  // API /v1/api/danh-sach/{type_list} thì linh hoạt hơn nhưng lại thiếu keyword.
+  // Hiện tại, chúng ta sẽ bám theo /v1/api/tim-kiem và yêu cầu keyword hoặc một trường nào đó phải có.
+
+  // Nếu không có bất kỳ tham số nào ngoài page và limit, có thể coi là không hợp lệ
+  if (!keyword && !category && !country && !year && !sort_lang) {
+    // return res.status(400).json({ message: "Cần ít nhất một tiêu chí tìm kiếm (từ khóa, thể loại, quốc gia, năm, hoặc ngôn ngữ)." });
+    // Hoặc nếu API /tim-kiem bắt buộc keyword:
+    if (!keyword) {
+      return res.status(400).json({
+        message: "Từ khóa tìm kiếm là bắt buộc cho loại tìm kiếm này.",
+      });
+    }
+  }
+
+  try {
+    let apiUrl = `${PHIM_API_DOMAIN}/v1/api/tim-kiem?`;
+    const queryParams = [];
+
+    if (keyword) queryParams.push(`keyword=${encodeURIComponent(keyword)}`);
+    queryParams.push(`page=${page}`);
+    queryParams.push(`limit=${limit}`);
+    if (category) queryParams.push(`category=${encodeURIComponent(category)}`);
+    if (country) queryParams.push(`country=${encodeURIComponent(country)}`);
+    if (year) queryParams.push(`year=${year}`);
+    if (sort_field) queryParams.push(`sort_field=${sort_field}`);
+    if (sort_type) queryParams.push(`sort_type=${sort_type}`);
+    if (sort_lang) queryParams.push(`sort_lang=${sort_lang}`);
+
+    apiUrl += queryParams.join("&");
+
+    // console.log("Constructed API URL for advanced search:", apiUrl); // Để debug
+
+    const response = await axios.get(apiUrl);
+
     if (
       response.data &&
       response.data.data &&
@@ -162,30 +203,44 @@ const searchMovies = async (req, res) => {
       response.data.data.params.pagination
     ) {
       res.json({
+        success: true, // Thêm success flag cho nhất quán
         items: response.data.data.items,
         pagination: response.data.data.params.pagination,
-        appParams: response.data.data.appParams, // Kiểm tra xem appParams ở đâu trong response của API này
+        titlePage: response.data.data.titlePage, // API tìm kiếm cũng có thể có titlePage
+        appParams: response.data.data.appParams,
       });
     } else {
       console.error(
-        `Unexpected API response for search ${keyword}:`,
+        `Unexpected API response for advanced search with query ${JSON.stringify(
+          req.query
+        )}:`,
         response.data
       );
       res.status(404).json({
-        message:
-          "Không tìm thấy phim nào với từ khóa này hoặc cấu trúc API thay đổi.",
+        success: false,
+        message: "Không tìm thấy phim nào phù hợp hoặc cấu trúc API thay đổi.",
       });
     }
   } catch (error) {
     console.error(
-      `Error searching movies with keyword ${keyword}:`,
+      `Error during advanced search with query ${JSON.stringify(req.query)}:`,
       error.message
     );
     if (error.response) {
       console.error("Error response data:", error.response.data);
       console.error("Error response status:", error.response.status);
+      res.status(error.response.status || 500).json({
+        success: false,
+        message:
+          error.response.data?.message || "Lỗi từ API nguồn khi tìm kiếm phim.",
+        sourceError: error.response.data,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Lỗi máy chủ khi tìm kiếm phim.",
+      });
     }
-    res.status(500).json({ message: "Lỗi máy chủ khi tìm kiếm phim." });
   }
 };
 
@@ -272,12 +327,125 @@ const getSeriesMovies = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Fetch movie genres
+// @route   GET /api/movies/genres
+// @access  Public
+const getMovieGenres = asyncHandler(async (req, res) => {
+  try {
+    const { data: apiResponse } = await axios.get(
+      `${PHIM_API_DOMAIN}/the-loai`
+    );
+
+    // API https://phimapi.com/the-loai trả về trực tiếp một mảng các object thể loại
+    if (apiResponse && Array.isArray(apiResponse)) {
+      res.json({
+        success: true,
+        genres: apiResponse,
+      });
+    } else {
+      // Nếu API trả về cấu trúc khác không mong đợi
+      console.error(
+        "Unexpected API response structure for /the-loai. Expected an array. Received:",
+        apiResponse
+      );
+      res.status(500).json({
+        success: false,
+        message:
+          "Dữ liệu thể loại trả về từ API nguồn không đúng định dạng mong đợi.",
+      });
+    }
+  } catch (error) {
+    console.error(
+      "Error fetching movie genres from source API:",
+      error.message
+    );
+    if (error.response) {
+      // Lỗi từ phía API nguồn (ví dụ: API nguồn bị 500, 404, etc.)
+      console.error(
+        "Error response data from source API:",
+        error.response.data
+      );
+      console.error(
+        "Error response status from source API:",
+        error.response.status
+      );
+      res.status(error.response.status || 500).json({
+        success: false,
+        message: "Lỗi từ API nguồn khi lấy danh sách thể loại.",
+        sourceError: error.response.data,
+      });
+    } else {
+      // Lỗi mạng hoặc lỗi khác không phải từ response của API nguồn
+      res.status(500).json({
+        success: false,
+        message: "Lỗi máy chủ nội bộ khi lấy danh sách thể loại.",
+      });
+    }
+  }
+});
+
+// @desc    Fetch movie countries
+// @route   GET /api/movies/countries
+// @access  Public
+const getMovieCountries = asyncHandler(async (req, res) => {
+  try {
+    const { data: apiResponse } = await axios.get(
+      `${PHIM_API_DOMAIN}/quoc-gia`
+    );
+
+    // API https://phimapi.com/quoc-gia trả về trực tiếp một mảng các object quốc gia
+    if (apiResponse && Array.isArray(apiResponse)) {
+      res.json({
+        success: true,
+        countries: apiResponse,
+      });
+    } else {
+      console.error(
+        "Unexpected API response structure for /quoc-gia. Expected an array. Received:",
+        apiResponse
+      );
+      res.status(500).json({
+        success: false,
+        message:
+          "Dữ liệu quốc gia trả về từ API nguồn không đúng định dạng mong đợi.",
+      });
+    }
+  } catch (error) {
+    console.error(
+      "Error fetching movie countries from source API:",
+      error.message
+    );
+    if (error.response) {
+      console.error(
+        "Error response data from source API:",
+        error.response.data
+      );
+      console.error(
+        "Error response status from source API:",
+        error.response.status
+      );
+      res.status(error.response.status || 500).json({
+        success: false,
+        message: "Lỗi từ API nguồn khi lấy danh sách quốc gia.",
+        sourceError: error.response.data,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Lỗi máy chủ nội bộ khi lấy danh sách quốc gia.",
+      });
+    }
+  }
+});
+
 export {
   getLatestMovies,
   getMovieDetailsBySlug,
   searchMovies,
   getSingleMovies,
   getSeriesMovies,
+  getMovieGenres,
+  getMovieCountries,
 };
 
 // Cần đảm bảo các hàm cũ (getLatestMovies, getMovieDetailsBySlug, searchMovies) vẫn được export nếu chúng vẫn được sử dụng bởi các route khác.
