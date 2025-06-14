@@ -1,25 +1,30 @@
 import axios from "axios";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5001/api"; // Đổi port từ 5000 sang 5001
+// ===== API CONFIGURATION =====
+const BACKEND_API_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:5001/api";
 
-const forumApi = axios.create({
-  baseURL: `${API_URL}/forum`,
+// Tạo axios instance riêng cho Forum API
+const forumApiClient = axios.create({
+  baseURL: `${BACKEND_API_URL}/forum`,
 });
 
 /**
- * Lấy tất cả danh mục forum.
- * @returns {Promise<Array<Object>>} Danh sách các danh mục.
+ * ===== FORUM CATEGORIES =====
+ * Lấy tất cả danh mục diễn đàn từ backend
+ * @returns {Promise<Array<Object>>} Danh sách các danh mục forum
+ * @route GET /api/forum/categories
  */
-export const getCategories = async () => {
+export const fetchAllForumCategories = async () => {
   try {
-    const response = await forumApi.get("/categories");
+    const response = await forumApiClient.get("/categories");
     return response.data;
   } catch (error) {
     console.error(
-      "Error fetching forum categories:",
+      "❌ Error fetching forum categories:",
       error.response?.data || error.message
     );
-    throw error.response?.data || new Error("Could not fetch forum categories");
+    throw error.response?.data || new Error("Không thể tải danh mục diễn đàn");
   }
 };
 
@@ -32,22 +37,30 @@ export const getCategories = async () => {
  * @param {string} [params.sort] - Chuỗi để sắp xếp (ví dụ: '-createdAt').
  * @returns {Promise<Object>} Đối tượng chứa danh sách chủ đề và thông tin phân trang.
  */
-export const getThreads = async ({ categorySlug, page, limit, sort } = {}) => {
+export const fetchForumThreadsWithFilters = async ({
+  categorySlug,
+  page,
+  limit,
+  sort,
+} = {}) => {
   try {
-    const params = new URLSearchParams();
-    if (categorySlug) params.append("category", categorySlug);
-    if (page) params.append("page", page.toString());
-    if (limit) params.append("limit", limit.toString());
-    if (sort) params.append("sort", sort);
+    // Build URL parameters for API call
+    const urlParams = new URLSearchParams();
+    if (categorySlug) urlParams.append("category", categorySlug);
+    if (page) urlParams.append("page", page.toString());
+    if (limit) urlParams.append("limit", limit.toString());
+    if (sort) urlParams.append("sort", sort);
 
-    const response = await forumApi.get(`/threads?${params.toString()}`);
-    return response.data; // Backend trả về { success, count, pagination, category, threads }
+    const response = await forumApiClient.get(
+      `/threads?${urlParams.toString()}`
+    );
+    return response.data; // Backend returns: { success, count, pagination, category, threads }
   } catch (error) {
     console.error(
-      "Error fetching forum threads:",
+      "❌ Error fetching forum threads:",
       error.response?.data || error.message
     );
-    throw error.response?.data || new Error("Could not fetch forum threads");
+    throw error.response?.data || new Error("Không thể tải danh sách chủ đề");
   }
 };
 
@@ -59,7 +72,7 @@ export const getThreads = async ({ categorySlug, page, limit, sort } = {}) => {
  */
 export const createThread = async (threadData, token) => {
   try {
-    const response = await forumApi.post("/threads", threadData, {
+    const response = await forumApiClient.post("/threads", threadData, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -83,7 +96,7 @@ export const createThread = async (threadData, token) => {
  */
 export const createReply = async (threadId, replyData, token) => {
   try {
-    const response = await forumApi.post(
+    const response = await forumApiClient.post(
       `/threads/${threadId}/replies`,
       replyData,
       {
@@ -119,7 +132,7 @@ export const getThreadBySlug = async (slug, { replyPage, replyLimit } = {}) => {
     if (replyPage) params.append("replyPage", replyPage.toString());
     if (replyLimit) params.append("replyLimit", replyLimit.toString());
 
-    const response = await forumApi.get(
+    const response = await forumApiClient.get(
       `/threads/${slug}?${params.toString()}`
     );
     // Backend trả về: { success, thread, replies: { items, pagination } }

@@ -180,6 +180,21 @@ export default function Header() {
                   >
                     Trang Cá Nhân
                   </MenuItem>
+                  {user?.role === "admin" && (
+                    <>
+                      <MenuDivider borderColor="brand.700" />
+                      <MenuItem
+                        bg="background.card"
+                        _hover={{ bg: "red.500", color: "white" }}
+                        as={RouterLink}
+                        to="/admin"
+                        color="red.400"
+                        fontWeight="bold"
+                      >
+                        🛡️ Admin Panel
+                      </MenuItem>
+                    </>
+                  )}
                   <MenuDivider borderColor="brand.700" />
                   <MenuItem
                     bg="background.card"

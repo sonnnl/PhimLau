@@ -1,13 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   Box,
   Heading,
   Text,
-  VStack,
-  Spinner,
-  Alert,
-  AlertIcon,
   SimpleGrid,
   Card,
   CardHeader,
@@ -16,62 +12,48 @@ import {
   StatNumber,
   StatHelpText,
   Icon,
+  Button,
 } from "@chakra-ui/react";
-import { getCategories } from "../services/forumService";
-import { FiMessageSquare, FiHash } from "react-icons/fi"; // Ví dụ icons
+import { useForumCategories } from "../hooks/useForumData";
+import {
+  ForumLoadingState,
+  ForumErrorState,
+  ForumEmptyState,
+} from "../components/forum/ForumErrorBoundary";
+import { FiMessageSquare, FiHash, FiUsers } from "react-icons/fi";
 
 const ForumCategoriesPage = () => {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { categories, loading, error, refreshCategories } =
+    useForumCategories();
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoading(true);
-        const data = await getCategories();
-        setCategories(data);
-        setError(null);
-      } catch (err) {
-        setError(err.message || "Không thể tải danh mục diễn đàn.");
-        console.error(err);
-      }
-      setLoading(false);
-    };
-
-    fetchCategories();
-  }, []);
-
+  // ===== LOADING STATE =====
   if (loading) {
-    return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        height="70vh"
-      >
-        <Spinner size="xl" />
-      </Box>
-    );
+    return <ForumLoadingState message="Đang tải danh mục diễn đàn..." />;
   }
 
+  // ===== ERROR STATE =====
   if (error) {
     return (
-      <Alert status="error" mt={4}>
-        <AlertIcon />
-        <Text>{error}</Text>
-      </Alert>
+      <ForumErrorState
+        error={error}
+        onRetry={refreshCategories}
+        retryText="Tải lại danh mục"
+      />
     );
   }
 
+  // ===== EMPTY STATE =====
   if (categories.length === 0) {
     return (
-      <Box textAlign="center" mt={10}>
-        <Heading as="h2" size="lg" mb={4}>
-          Diễn đàn
-        </Heading>
-        <Text>Hiện chưa có danh mục nào.</Text>
-      </Box>
+      <ForumEmptyState
+        title="Chưa có danh mục diễn đàn"
+        description="Hiện tại chưa có danh mục nào được tạo."
+        icon={FiUsers}
+      >
+        <Button colorScheme="orange" onClick={refreshCategories}>
+          Tải lại
+        </Button>
+      </ForumEmptyState>
     );
   }
 

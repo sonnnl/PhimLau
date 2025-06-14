@@ -37,6 +37,16 @@ const ForumThreadDetailPage = lazy(() =>
 const CreateThreadPage = lazy(() => import("./pages/CreateThreadPage"));
 const SingleMoviesPage = lazy(() => import("./pages/SingleMoviesPage"));
 const SeriesMoviesPage = lazy(() => import("./pages/SeriesMoviesPage"));
+const GenrePage = lazy(() => import("./pages/GenrePage"));
+
+// Admin pages
+const AdminDashboard = lazy(() => import("./admin/pages/AdminDashboard"));
+const AdminUsers = lazy(() => import("./admin/pages/AdminUsers"));
+const AdminNotifications = lazy(() =>
+  import("./admin/pages/AdminNotifications")
+);
+const AdminSetup = lazy(() => import("./admin/pages/AdminSetup"));
+const AdminRoute = lazy(() => import("./components/admin/AdminRoute"));
 
 // Component ProtectedRoute
 const ProtectedRoute = ({ children }) => {
@@ -120,6 +130,7 @@ function App() {
                 <Route path="/movies/latest" element={<LatestMoviesPage />} />
                 <Route path="/movies/single" element={<SingleMoviesPage />} />
                 <Route path="/movies/series" element={<SeriesMoviesPage />} />
+                <Route path="/genres/:slug" element={<GenrePage />} />
                 <Route path="/forum" element={<ForumCategoriesPage />} />
                 <Route
                   path="/forum/category/:categorySlug"
@@ -135,6 +146,35 @@ function App() {
                     <ProtectedRoute>
                       <CreateThreadPage />
                     </ProtectedRoute>
+                  }
+                />
+
+                {/* Admin setup route (public) */}
+                <Route path="/admin/setup" element={<AdminSetup />} />
+
+                {/* Admin routes */}
+                <Route
+                  path="/admin"
+                  element={
+                    <AdminRoute>
+                      <AdminDashboard />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path="/admin/users"
+                  element={
+                    <AdminRoute>
+                      <AdminUsers />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path="/admin/notifications"
+                  element={
+                    <AdminRoute>
+                      <AdminNotifications />
+                    </AdminRoute>
                   }
                 />
 

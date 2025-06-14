@@ -73,6 +73,21 @@ const movieService = {
       throw error.response ? error.response.data : error;
     }
   },
+
+  getMoviesByGenre: async (genreSlug, page = 1) => {
+    try {
+      const response = await axios.get(
+        `${API_URL}/movies/genre/${genreSlug}?page=${page}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching movies for genre ${genreSlug}:`,
+        error.response ? error.response.data : error.message
+      );
+      throw error.response ? error.response.data : error;
+    }
+  },
 };
 
 export default movieService;

@@ -20,62 +20,71 @@ const createCategory = asyncHandler(async (req, res) => {
   res.status(501).json({ message: "Chức năng chưa được triển khai" });
 });
 
-// @desc    Lấy danh sách chủ đề (có thể lọc theo category, phân trang, sắp xếp)
+// @desc    Lấy danh sách chủ đề diễn đàn với phân trang và lọc
 // @route   GET /api/forum/threads?category=slug&page=1&limit=10&sort=field
 // @access  Public
-const getThreads = asyncHandler(async (req, res) => {
-  const page = parseInt(req.query.page, 10) || 1;
-  const limit = parseInt(req.query.limit, 10) || 15; // Số thread mỗi trang
-  const categorySlug = req.query.category; // Lấy slug category từ query
-  const sortBy = req.query.sort || "-lastReplyTime -createdAt"; // Mặc định sort theo trả lời mới nhất, rồi đến tạo mới nhất
+// @logic   PHÂN TRANG + LỌC THEO CATEGORY + SẮP XẾP
+const getForumThreadsWithPagination = asyncHandler(async (req, res) => {
+  // ===== EXTRACT QUERY PARAMETERS =====
+  const currentPage = parseInt(req.query.page, 10) || 1;
+  const threadsPerPage = parseInt(req.query.limit, 10) || 15; // Default: 15 threads/page
+  const filterByCategorySlug = req.query.category; // Optional category filter
+  const sortingCriteria = req.query.sort || "-lastReplyTime -createdAt"; // Default: latest reply first
 
-  const startIndex = (page - 1) * limit;
-  const endIndex = page * limit;
+  // ===== CALCULATE PAGINATION INDICES =====
+  const skipThreadsCount = (currentPage - 1) * threadsPerPage;
+  const endIndex = currentPage * threadsPerPage;
 
-  let query = {};
-  let category = null;
+  // ===== BUILD DATABASE QUERY =====
+  let databaseQuery = {};
+  let selectedCategoryInfo = null;
 
-  // Nếu có lọc theo category slug
-  if (categorySlug) {
-    category = await ForumCategory.findOne({ slug: categorySlug });
-    if (!category) {
+  // Nếu có lọc theo category slug - FILTER BY CATEGORY
+  if (filterByCategorySlug) {
+    selectedCategoryInfo = await ForumCategory.findOne({
+      slug: filterByCategorySlug,
+    });
+    if (!selectedCategoryInfo) {
       res.status(404);
-      throw new Error("Danh mục không tồn tại");
+      throw new Error("Danh mục diễn đàn không tồn tại");
     }
-    query.category = category._id;
+    databaseQuery.category = selectedCategoryInfo._id;
   }
 
-  const totalThreads = await ForumThread.countDocuments(query);
-  const totalPages = Math.ceil(totalThreads / limit);
+  // ===== EXECUTE DATABASE QUERIES =====
+  const totalThreadsCount = await ForumThread.countDocuments(databaseQuery);
+  const totalPagesCount = Math.ceil(totalThreadsCount / threadsPerPage);
 
-  const threads = await ForumThread.find(query)
-    .populate("author", "displayName avatarUrl") // Lấy tên và avatar người tạo
-    .populate("category", "name slug") // Lấy tên và slug category
-    .populate("lastReplyAuthor", "displayName avatarUrl") // Lấy tên và avatar người trả lời cuối
-    .sort(sortBy)
-    .skip(startIndex)
-    .limit(limit);
+  const forumThreadsList = await ForumThread.find(databaseQuery)
+    .populate("author", "displayName avatarUrl") // Lấy thông tin người tạo thread
+    .populate("category", "name slug") // Lấy thông tin category
+    .populate("lastReplyAuthor", "displayName avatarUrl") // Lấy thông tin người reply cuối
+    .sort(sortingCriteria) // Sắp xếp theo criteria
+    .skip(skipThreadsCount) // Bỏ qua threads của trang trước
+    .limit(threadsPerPage); // Giới hạn threads của trang hiện tại
 
+  // ===== BUILD RESPONSE DATA =====
   res.status(200).json({
     success: true,
-    count: threads.length,
+    count: forumThreadsList.length,
     pagination: {
-      currentPage: page,
-      totalPages: totalPages,
-      totalItems: totalThreads,
-      limit: limit,
-      // Thêm thông tin next/prev page nếu cần
-      ...(endIndex < totalThreads && { nextPage: page + 1 }),
-      ...(startIndex > 0 && { prevPage: page - 1 }),
+      currentPage: currentPage,
+      totalPages: totalPagesCount,
+      totalItems: totalThreadsCount,
+      limit: threadsPerPage,
+      // Thông tin navigation
+      ...(endIndex < totalThreadsCount && { nextPage: currentPage + 1 }),
+      ...(skipThreadsCount > 0 && { prevPage: currentPage - 1 }),
     },
-    category: category
+    // Trả về thông tin category nếu đang filter
+    category: selectedCategoryInfo
       ? {
-          name: category.name,
-          slug: category.slug,
-          description: category.description,
+          name: selectedCategoryInfo.name,
+          slug: selectedCategoryInfo.slug,
+          description: selectedCategoryInfo.description,
         }
-      : null, // Trả về thông tin category nếu có lọc
-    threads,
+      : null,
+    threads: forumThreadsList,
   });
 });
 
@@ -223,7 +232,7 @@ const createReply = asyncHandler(async (req, res) => {
 export {
   getCategories,
   createCategory,
-  getThreads,
+  getForumThreadsWithPagination, // ✅ Updated name
   getThreadBySlug,
   createThread,
   createReply,

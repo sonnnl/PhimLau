@@ -20,7 +20,10 @@ import {
   BreadcrumbLink,
   Text,
 } from "@chakra-ui/react";
-import { createThread, getCategories } from "../services/forumService";
+import {
+  createThread,
+  fetchAllForumCategories,
+} from "../services/forumService";
 import { useAuth } from "../contexts/AuthContext";
 import { FiHome, FiChevronRight, FiMessageSquare } from "react-icons/fi";
 
@@ -56,7 +59,7 @@ const CreateThreadPage = () => {
     const fetchCategories = async () => {
       try {
         setLoadingCategories(true);
-        const fetchedCategories = await getCategories();
+        const fetchedCategories = await fetchAllForumCategories();
         setCategories(fetchedCategories || []);
         // Nếu không có pre-selected từ URL, chọn category đầu tiên (nếu có)
         // if (!categoryId && fetchedCategories && fetchedCategories.length > 0) {

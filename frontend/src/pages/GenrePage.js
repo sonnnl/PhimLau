@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
+  useParams,
   useSearchParams,
-  useNavigate,
   Link as RouterLink,
 } from "react-router-dom";
 import {
@@ -11,7 +11,6 @@ import {
   Spinner,
   Center,
   SimpleGrid,
-  Box,
   Button,
   HStack,
   Alert,
@@ -22,65 +21,58 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   Icon,
+  Box,
 } from "@chakra-ui/react";
 import { ChevronRightIcon } from "@chakra-ui/icons";
-import { FaSearch } from "react-icons/fa";
+import { FaFilm } from "react-icons/fa";
 import movieService from "../services/movieService";
 import MovieCard from "../components/MovieCard";
 
-const SearchResultsPage = () => {
+const GenrePage = () => {
+  const { slug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
 
-  const keyword = useMemo(
-    () => searchParams.get("keyword") || "",
-    [searchParams]
-  );
-  const currentPage = useMemo(
-    () => parseInt(searchParams.get("page") || "1", 10),
-    [searchParams]
-  );
+  const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
-  const [searchResults, setSearchResults] = useState([]);
+  const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState(null);
+  const [genreInfo, setGenreInfo] = useState({ titlePage: "", breadCrumb: [] });
 
   useEffect(() => {
-    if (!keyword) {
-      // Nếu không có keyword, có thể redirect về home hoặc hiển thị thông báo
-      // navigate('/');
-      setSearchResults([]);
-      setPagination(null);
-      setError("Vui lòng nhập từ khóa để tìm kiếm."); // Hoặc để trống nếu không muốn báo lỗi ngay
-      return;
-    }
+    if (!slug) return;
 
-    const fetchSearchResults = async () => {
+    const fetchMoviesByGenre = async () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await movieService.searchMovies(keyword, currentPage);
-        setSearchResults(data.items || []);
+        const data = await movieService.getMoviesByGenre(slug, currentPage);
+        setMovies(data.items || []);
         setPagination(data.pagination || null);
+        setGenreInfo({
+          titlePage: data.titlePage || `Thể loại: ${slug}`,
+          breadCrumb: data.breadCrumb || [],
+        });
+
         if (!data.items || data.items.length === 0) {
-          setError(`Không tìm thấy kết quả nào cho từ khóa "${keyword}".`);
+          setError(`Không tìm thấy phim nào cho thể loại "${slug}".`);
         }
       } catch (err) {
-        console.error(`Error searching for keyword ${keyword}:`, err);
-        setError(err.message || "Lỗi khi tìm kiếm phim.");
-        setSearchResults([]);
+        console.error(`Error fetching movies for genre ${slug}:`, err);
+        setError(err.message || "Lỗi khi tải phim theo thể loại.");
+        setMovies([]);
         setPagination(null);
       }
       setLoading(false);
     };
 
-    fetchSearchResults();
-  }, [keyword, currentPage, navigate]);
+    fetchMoviesByGenre();
+  }, [slug, currentPage]);
 
   const handlePageChange = (newPage) => {
     if (newPage > 0 && (!pagination || newPage <= pagination.totalPages)) {
-      setSearchParams({ keyword, page: newPage.toString() });
+      setSearchParams({ page: newPage.toString() });
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -97,24 +89,30 @@ const SearchResultsPage = () => {
             Trang Chủ
           </BreadcrumbLink>
         </BreadcrumbItem>
+        <BreadcrumbItem>
+          <BreadcrumbLink as={RouterLink} to="/">
+            Thể Loại
+          </BreadcrumbLink>
+        </BreadcrumbItem>
         <BreadcrumbItem isCurrentPage>
-          <BreadcrumbLink href="#">Kết quả tìm kiếm</BreadcrumbLink>
+          <BreadcrumbLink href="#">
+            {genreInfo.titlePage || slug}
+          </BreadcrumbLink>
         </BreadcrumbItem>
       </Breadcrumb>
 
-      <Heading as="h1" size="xl" mb={2} color="brand.accent">
-        <Icon as={FaSearch} mr={3} verticalAlign="middle" />
-        Kết quả tìm kiếm cho:
-        <Text as="span" color="whiteAlpha.900" fontWeight="bold">
-          {keyword ? `"${keyword}"` : "..."}
-        </Text>
-      </Heading>
-      {pagination && (
-        <Text fontSize="sm" color="gray.400" mb={6}>
-          Trang {pagination.currentPage} / {pagination.totalPages} (Tổng số{" "}
-          {pagination.totalItems} kết quả)
-        </Text>
-      )}
+      <Box mb={6}>
+        <Heading as="h1" size="xl" mb={2} color="brand.accent">
+          <Icon as={FaFilm} mr={3} verticalAlign="middle" />
+          {genreInfo.titlePage || `Thể loại: ${slug}`}
+        </Heading>
+        {pagination && (
+          <Text fontSize="sm" color="gray.400">
+            Trang {pagination.currentPage} / {pagination.totalPages} (Tổng số{" "}
+            {pagination.totalItems} phim)
+          </Text>
+        )}
+      </Box>
 
       {loading && (
         <Center h="300px">
@@ -129,7 +127,7 @@ const SearchResultsPage = () => {
 
       {!loading && error && (
         <Alert
-          status={searchResults.length > 0 ? "warning" : "info"} // Nếu có lỗi nhưng vẫn có kết quả cũ thì là warning
+          status={movies.length > 0 ? "warning" : "info"}
           variant="subtle"
           flexDirection="column"
           alignItems="center"
@@ -141,21 +139,25 @@ const SearchResultsPage = () => {
         >
           <AlertIcon boxSize="40px" mr={0} />
           <AlertTitle mt={4} mb={1} fontSize="lg">
-            {searchResults.length > 0 ? "Thông báo" : "Không tìm thấy"}
+            {movies.length > 0 ? "Thông báo" : "Không tìm thấy"}
           </AlertTitle>
           <AlertDescription maxWidth="md">{error}</AlertDescription>
-          <Button mt={6} colorScheme="orange" onClick={() => navigate("/")}>
-            Về Trang Chủ
+          <Button
+            mt={6}
+            colorScheme="orange"
+            onClick={() => window.history.back()}
+          >
+            Quay lại
           </Button>
         </Alert>
       )}
 
-      {!loading && !error && searchResults.length > 0 && (
+      {!loading && !error && movies.length > 0 && (
         <SimpleGrid
           columns={{ base: 2, sm: 3, md: 4, lg: 5, xl: 6 }}
           spacing={{ base: 4, md: 6 }}
         >
-          {searchResults.map((movie) => (
+          {movies.map((movie) => (
             <MovieCard key={movie._id || movie.slug} movie={movie} />
           ))}
         </SimpleGrid>
@@ -167,6 +169,8 @@ const SearchResultsPage = () => {
             onClick={() => handlePageChange(1)}
             isDisabled={currentPage === 1}
             size="sm"
+            variant="outline"
+            colorScheme="orange"
           >
             Trang đầu
           </Button>
@@ -174,10 +178,12 @@ const SearchResultsPage = () => {
             onClick={() => handlePageChange(currentPage - 1)}
             isDisabled={currentPage === 1}
             size="sm"
+            variant="outline"
+            colorScheme="orange"
           >
             Trước
           </Button>
-          <Text>
+          <Text color="whiteAlpha.800">
             Trang <Text as="strong">{currentPage}</Text> /{" "}
             {pagination.totalPages}
           </Text>
@@ -185,6 +191,8 @@ const SearchResultsPage = () => {
             onClick={() => handlePageChange(currentPage + 1)}
             isDisabled={currentPage === pagination.totalPages}
             size="sm"
+            variant="outline"
+            colorScheme="orange"
           >
             Sau
           </Button>
@@ -192,6 +200,8 @@ const SearchResultsPage = () => {
             onClick={() => handlePageChange(pagination.totalPages)}
             isDisabled={currentPage === pagination.totalPages}
             size="sm"
+            variant="outline"
+            colorScheme="orange"
           >
             Trang cuối
           </Button>
@@ -201,4 +211,4 @@ const SearchResultsPage = () => {
   );
 };
 
-export default SearchResultsPage;
+export default GenrePage;

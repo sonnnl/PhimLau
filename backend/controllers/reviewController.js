@@ -36,6 +36,13 @@ const createOrUpdateReview = asyncHandler(async (req, res) => {
     }
   );
 
+  // Manually trigger rating calculation to ensure it's updated
+  try {
+    await Review.calculateAverageRating(movieId);
+  } catch (error) {
+    console.error("Error calculating average rating:", error);
+  }
+
   res.status(201).json(review);
 });
 
@@ -82,9 +89,15 @@ const deleteReview = asyncHandler(async (req, res) => {
     throw new Error("Không được phép xóa đánh giá này.");
   }
 
-  // Sử dụng findOneAndRemove để trigger 'post' middleware trong ReviewModel
-  const deletedReview = await Review.findOneAndRemove({ _id: reviewId });
+  // Sử dụng findOneAndDelete để trigger 'post' middleware trong ReviewModel
+  const deletedReview = await Review.findOneAndDelete({ _id: reviewId });
   if (deletedReview) {
+    // Manually trigger rating calculation after deletion
+    try {
+      await Review.calculateAverageRating(deletedReview.movie);
+    } catch (error) {
+      console.error("Error calculating average rating after deletion:", error);
+    }
     res.json({ message: "Đánh giá đã được xóa." });
   } else {
     res.status(404);
@@ -94,4 +107,35 @@ const deleteReview = asyncHandler(async (req, res) => {
   }
 });
 
-export { createOrUpdateReview, getReviewsForMovie, deleteReview };
+// @desc    Fix rating calculation for a specific movie
+// @route   POST /api/reviews/fix-rating/:movieId
+// @access  Public (temporary for debugging)
+const fixMovieRating = asyncHandler(async (req, res) => {
+  const { movieId } = req.params;
+
+  try {
+    // Manually trigger rating calculation
+    await Review.calculateAverageRating(movieId);
+
+    // Get updated movie data
+    const updatedMovie = await MovieMetadata.findById(movieId);
+
+    res.json({
+      message: "Rating calculation completed",
+      movieId,
+      appAverageRating: updatedMovie?.appAverageRating || 0,
+      appRatingCount: updatedMovie?.appRatingCount || 0,
+    });
+  } catch (error) {
+    console.error("Error fixing movie rating:", error);
+    res.status(500);
+    throw new Error("Error fixing movie rating");
+  }
+});
+
+export {
+  createOrUpdateReview,
+  getReviewsForMovie,
+  deleteReview,
+  fixMovieRating,
+};

@@ -3,6 +3,7 @@ import {
   createOrUpdateReview,
   getReviewsForMovie,
   deleteReview,
+  fixMovieRating,
 } from "../controllers/reviewController.js";
 import { protect } from "../middleware/authMiddleware.js"; // Middleware xác thực người dùng
 
@@ -16,5 +17,8 @@ router.route("/:movieId").post(protect, createOrUpdateReview);
 
 // Route để xóa một review cụ thể bằng reviewId
 router.route("/:reviewId").delete(protect, deleteReview);
+
+// Route để fix rating calculation cho một phim (temporary for debugging)
+router.route("/fix-rating/:movieId").post(fixMovieRating);
 
 export default router;

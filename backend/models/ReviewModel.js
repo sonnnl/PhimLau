@@ -89,7 +89,14 @@ reviewSchema.post("save", async function () {
   await this.constructor.calculateAverageRating(this.movie);
 });
 
-// Middleware cho remove. findOneAndRemove sẽ trigger hook này.
+// Middleware cho remove. findOneAndDelete sẽ trigger hook này.
+reviewSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) {
+    await doc.constructor.calculateAverageRating(doc.movie);
+  }
+});
+
+// Support for legacy findOneAndRemove (if still used anywhere)
 reviewSchema.post("findOneAndRemove", async function (doc) {
   if (doc) {
     await doc.constructor.calculateAverageRating(doc.movie);
@@ -97,7 +104,7 @@ reviewSchema.post("findOneAndRemove", async function (doc) {
 });
 
 // Nếu bạn dùng deleteOne hoặc deleteMany, bạn cần xử lý riêng vì chúng không trigger document middleware
-// Tuy nhiên, với việc xóa review, thường sẽ xóa theo ID cụ thể, nên findOneAndRemove là phổ biến.
+// Tuy nhiên, với việc xóa review, thường sẽ xóa theo ID cụ thể, nên findOneAndDelete là phổ biến.
 
 const Review = mongoose.model("Review", reviewSchema);
 

@@ -67,13 +67,39 @@ const getLatestMovies = async (req, res) => {
 
     // Kiểm tra cẩn thận hơn trước khi truy cập
     if (response.data && response.data.status && response.data.items) {
+      // Enrich latest movies with local movie metadata (ratings)
+      const moviesWithMetadata = await Promise.all(
+        response.data.items.map(async (movie) => {
+          try {
+            // Try to get metadata from local database
+            const movieMetadata = await MovieMetadata.findById(movie._id);
+            return {
+              ...movie,
+              movieMetadata: movieMetadata || {
+                appAverageRating: 0,
+                appRatingCount: 0,
+              },
+            };
+          } catch (err) {
+            // If error, return movie without metadata
+            return {
+              ...movie,
+              movieMetadata: {
+                appAverageRating: 0,
+                appRatingCount: 0,
+              },
+            };
+          }
+        })
+      );
+
       // Giả sử pagination nằm trực tiếp trong data.params nếu params tồn tại
       // Hoặc API có thể đã thay đổi, pagination nằm ở chỗ khác hoặc có tên khác.
       const paginationData =
         response.data.params?.pagination || response.data.pagination || null;
 
       res.json({
-        items: response.data.items,
+        items: moviesWithMetadata,
         pagination: paginationData, // Sử dụng paginationData đã kiểm tra
         appParams: response.data.appParams, // Giữ nguyên nếu appParams vẫn đúng
       });
@@ -202,9 +228,35 @@ const searchMovies = async (req, res) => {
       response.data.data.params &&
       response.data.data.params.pagination
     ) {
+      // Enrich search results with local movie metadata (ratings)
+      const moviesWithMetadata = await Promise.all(
+        response.data.data.items.map(async (movie) => {
+          try {
+            // Try to get metadata from local database
+            const movieMetadata = await MovieMetadata.findById(movie._id);
+            return {
+              ...movie,
+              movieMetadata: movieMetadata || {
+                appAverageRating: 0,
+                appRatingCount: 0,
+              },
+            };
+          } catch (err) {
+            // If error, return movie without metadata
+            return {
+              ...movie,
+              movieMetadata: {
+                appAverageRating: 0,
+                appRatingCount: 0,
+              },
+            };
+          }
+        })
+      );
+
       res.json({
         success: true, // Thêm success flag cho nhất quán
-        items: response.data.data.items,
+        items: moviesWithMetadata,
         pagination: response.data.data.params.pagination,
         titlePage: response.data.data.titlePage, // API tìm kiếm cũng có thể có titlePage
         appParams: response.data.data.appParams,
@@ -260,9 +312,35 @@ const getSingleMovies = asyncHandler(async (req, res) => {
       apiResponse.data &&
       apiResponse.data.items
     ) {
+      // Enrich single movies with local movie metadata (ratings)
+      const moviesWithMetadata = await Promise.all(
+        apiResponse.data.items.map(async (movie) => {
+          try {
+            // Try to get metadata from local database
+            const movieMetadata = await MovieMetadata.findById(movie._id);
+            return {
+              ...movie,
+              movieMetadata: movieMetadata || {
+                appAverageRating: 0,
+                appRatingCount: 0,
+              },
+            };
+          } catch (err) {
+            // If error, return movie without metadata
+            return {
+              ...movie,
+              movieMetadata: {
+                appAverageRating: 0,
+                appRatingCount: 0,
+              },
+            };
+          }
+        })
+      );
+
       res.json({
         success: true,
-        items: apiResponse.data.items,
+        items: moviesWithMetadata,
         pagination: apiResponse.data.params?.pagination, // Lấy pagination từ data.params
         titlePage: apiResponse.data.titlePage, // Có thể thêm titlePage nếu frontend cần
       });
@@ -301,9 +379,35 @@ const getSeriesMovies = asyncHandler(async (req, res) => {
       apiResponse.data &&
       apiResponse.data.items
     ) {
+      // Enrich series movies with local movie metadata (ratings)
+      const moviesWithMetadata = await Promise.all(
+        apiResponse.data.items.map(async (movie) => {
+          try {
+            // Try to get metadata from local database
+            const movieMetadata = await MovieMetadata.findById(movie._id);
+            return {
+              ...movie,
+              movieMetadata: movieMetadata || {
+                appAverageRating: 0,
+                appRatingCount: 0,
+              },
+            };
+          } catch (err) {
+            // If error, return movie without metadata
+            return {
+              ...movie,
+              movieMetadata: {
+                appAverageRating: 0,
+                appRatingCount: 0,
+              },
+            };
+          }
+        })
+      );
+
       res.json({
         success: true,
-        items: apiResponse.data.items,
+        items: moviesWithMetadata,
         pagination: apiResponse.data.params?.pagination,
         titlePage: apiResponse.data.titlePage,
       });
@@ -438,6 +542,77 @@ const getMovieCountries = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Fetch movies by genre
+// @route   GET /api/movies/genre/:slug
+// @access  Public
+const getMoviesByGenre = asyncHandler(async (req, res) => {
+  const { slug } = req.params;
+  const page = req.query.page || 1;
+
+  try {
+    const { data: apiResponse } = await axios.get(
+      `${PHIM_API_DOMAIN}/v1/api/the-loai/${slug}?page=${page}`
+    );
+
+    if (
+      apiResponse &&
+      apiResponse.status === "success" &&
+      apiResponse.data &&
+      apiResponse.data.items
+    ) {
+      // Enrich genre movies with local movie metadata (ratings)
+      const moviesWithMetadata = await Promise.all(
+        apiResponse.data.items.map(async (movie) => {
+          try {
+            // Try to get metadata from local database
+            const movieMetadata = await MovieMetadata.findById(movie._id);
+            return {
+              ...movie,
+              movieMetadata: movieMetadata || {
+                appAverageRating: 0,
+                appRatingCount: 0,
+              },
+            };
+          } catch (err) {
+            // If error, return movie without metadata
+            return {
+              ...movie,
+              movieMetadata: {
+                appAverageRating: 0,
+                appRatingCount: 0,
+              },
+            };
+          }
+        })
+      );
+
+      res.json({
+        success: true,
+        items: moviesWithMetadata,
+        pagination: apiResponse.data.params?.pagination,
+        titlePage: apiResponse.data.titlePage,
+        breadCrumb: apiResponse.data.breadCrumb,
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message:
+          apiResponse.msg ||
+          "Không tìm thấy dữ liệu phim cho thể loại này hoặc cấu trúc API thay đổi.",
+      });
+    }
+  } catch (error) {
+    console.error(`Error fetching movies for genre ${slug}:`, error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Server error while fetching movies by genre",
+    });
+  }
+});
+
 export {
   getLatestMovies,
   getMovieDetailsBySlug,
@@ -446,6 +621,7 @@ export {
   getSeriesMovies,
   getMovieGenres,
   getMovieCountries,
+  getMoviesByGenre,
 };
 
 // Cần đảm bảo các hàm cũ (getLatestMovies, getMovieDetailsBySlug, searchMovies) vẫn được export nếu chúng vẫn được sử dụng bởi các route khác.

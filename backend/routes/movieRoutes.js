@@ -10,6 +10,7 @@ import {
   getSeriesMovies,
   getMovieGenres,
   getMovieCountries,
+  getMoviesByGenre,
 } from "../controllers/movieController.js"; // Thêm .js extension nếu cần
 
 // @route   GET /api/movies/latest
@@ -46,5 +47,10 @@ router.get("/genres", getMovieGenres);
 // @desc    Lấy danh sách quốc gia phim
 // @access  Public
 router.get("/countries", getMovieCountries);
+
+// @route   GET /api/movies/genre/:slug
+// @desc    Lấy phim theo thể loại
+// @access  Public
+router.get("/genre/:slug", getMoviesByGenre);
 
 export default router;

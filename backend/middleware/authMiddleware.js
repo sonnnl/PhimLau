@@ -40,8 +40,7 @@ const protect = asyncHandler(async (req, res, next) => {
 
 // Optional: Middleware to check for admin role
 const admin = (req, res, next) => {
-  if (req.user && req.user.isAdmin) {
-    // Assuming you add an isAdmin field to your User model
+  if (req.user && req.user.role === "admin") {
     next();
   } else {
     res.status(401);

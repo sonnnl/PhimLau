@@ -33,7 +33,7 @@ import {
   BreadcrumbLink,
   SimpleGrid,
 } from "@chakra-ui/react";
-import { getThreads } from "../services/forumService";
+import { fetchForumThreadsWithFilters } from "../services/forumService";
 import {
   FiMessageSquare,
   FiEye,
@@ -137,7 +137,7 @@ const ForumThreadsPage = () => {
     async (pageToFetch) => {
       try {
         setLoading(true);
-        const data = await getThreads({
+        const data = await fetchForumThreadsWithFilters({
           categorySlug,
           page: pageToFetch,
           limit,

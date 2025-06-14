@@ -3,7 +3,7 @@ const router = express.Router();
 import {
   getCategories,
   createCategory,
-  getThreads,
+  getForumThreadsWithPagination, // ✅ Updated import name
   getThreadBySlug,
   createThread,
   createReply,
@@ -19,7 +19,7 @@ router
 // === Thread Routes ===
 router
   .route("/threads")
-  .get(getThreads) // Lấy danh sách threads (có thể lọc, phân trang)
+  .get(getForumThreadsWithPagination) // Lấy danh sách threads với pagination & filter
   .post(protect, createThread); // Tạo thread mới (cần protect)
 
 router.route("/threads/:slug").get(getThreadBySlug); // Lấy chi tiết thread bằng slug
