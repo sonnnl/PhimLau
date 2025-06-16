@@ -47,6 +47,7 @@ const MyThreadsPage = lazy(() => import("./pages/MyThreadsPage"));
 const SingleMoviesPage = lazy(() => import("./pages/SingleMoviesPage"));
 const SeriesMoviesPage = lazy(() => import("./pages/SeriesMoviesPage"));
 const GenrePage = lazy(() => import("./pages/GenrePage"));
+const FavoriteMoviesPage = lazy(() => import("./pages/FavoriteMoviesPage"));
 
 // Admin pages
 const AdminSetup = lazy(() => import("./admin/pages/AdminSetup"));
@@ -179,6 +180,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <MyThreadsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/my-favorites"
+                  element={
+                    <ProtectedRoute>
+                      <FavoriteMoviesPage />
                     </ProtectedRoute>
                   }
                 />

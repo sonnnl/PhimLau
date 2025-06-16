@@ -16,6 +16,8 @@ import InfiniteScroll from "react-infinite-scroll-component";
 import movieService from "../services/movieService";
 import MovieCard from "../components/MovieCard";
 
+const MOVIES_PER_FETCH = 18;
+
 const LatestMoviesPage = () => {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +33,10 @@ const LatestMoviesPage = () => {
     }
     setError(null);
     try {
-      const data = await movieService.getLatestMovies(pageToFetch);
+      const data = await movieService.getLatestMovies(
+        pageToFetch,
+        MOVIES_PER_FETCH
+      );
       if (data && data.items) {
         setMovies((prevMovies) =>
           pageToFetch === 1 ? data.items : [...prevMovies, ...data.items]

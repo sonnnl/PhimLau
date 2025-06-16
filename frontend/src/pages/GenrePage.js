@@ -28,6 +28,8 @@ import { FaFilm } from "react-icons/fa";
 import movieService from "../services/movieService";
 import MovieCard from "../components/MovieCard";
 
+const MOVIES_PER_PAGE = 18;
+
 const GenrePage = () => {
   const { slug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -47,7 +49,11 @@ const GenrePage = () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await movieService.getMoviesByGenre(slug, currentPage);
+        const data = await movieService.getMoviesByGenre(
+          slug,
+          currentPage,
+          MOVIES_PER_PAGE
+        );
         setMovies(data.items || []);
         setPagination(data.pagination || null);
         setGenreInfo({

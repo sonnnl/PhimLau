@@ -17,6 +17,7 @@ import reviewAdminRoutes from "./admin/routes/reviewAdminRoutes.js";
 import adminLogRoutes from "./admin/routes/adminLogRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import likeRoutes from "./routes/likeRoutes.js";
+import favoriteRoutes from "./routes/favoriteRoutes.js";
 
 import { protect } from "./middleware/authMiddleware.js";
 
@@ -56,15 +57,29 @@ app.use("/api/admin/notifications", adminNotificationRoutes);
 app.use("/api/admin/logs", adminLogRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/likes", likeRoutes);
+app.use("/api/favorites", favoriteRoutes);
 
-// Global Error Handler - xử lý lỗi toàn cục
-app.use((err, req, res, next) => {
-  console.error("Global Error Handler:", err.message);
-  console.error(err.stack);
-  res.status(err.status || 500).json({
-    message: err.message || "Something went wrong!",
+// Định nghĩa middleware xử lý lỗi ngay tại đây
+// Middleware xử lý lỗi 404 Not Found
+const notFound = (req, res, next) => {
+  const error = new Error(`Not Found - ${req.originalUrl}`);
+  res.status(404);
+  next(error);
+};
+
+// Middleware xử lý lỗi chung
+const errorHandler = (err, req, res, next) => {
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  res.status(statusCode);
+  res.json({
+    message: err.message,
+    stack: process.env.NODE_ENV === "production" ? null : err.stack,
   });
-});
+};
+
+// Custom Error Handling Middleware
+app.use(notFound);
+app.use(errorHandler);
 
 // Tạo HTTP server và thiết lập Socket.IO cho real-time communication
 const server = createServer(app);

@@ -54,14 +54,15 @@ const getOrCreateMovieMetadata = async (movieDataFromApi) => {
  * Lấy danh sách phim mới cập nhật với phân trang
  * @route GET /api/movies/latest
  * @param {number} page - Số trang (mặc định = 1)
+ * @param {number} limit - Số lượng phim trên mỗi trang (mặc định = 18)
  * @returns {Object} Danh sách phim với metadata và thông tin phân trang
  */
-const getLatestMovies = async (req, res) => {
-  const { page = 1 } = req.query;
+const getLatestMovies = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 18 } = req.query;
   try {
     // Gọi API bên ngoài để lấy danh sách phim mới
     const response = await axios.get(
-      `${PHIM_API_DOMAIN}/danh-sach/phim-moi-cap-nhat?page=${page}`
+      `${PHIM_API_DOMAIN}/danh-sach/phim-moi-cap-nhat?page=${page}&limit=${limit}`
     );
 
     // Kiểm tra cấu trúc response từ API
@@ -116,7 +117,7 @@ const getLatestMovies = async (req, res) => {
     }
     res.status(500).json({ message: "Lỗi máy chủ khi lấy dữ liệu phim." });
   }
-};
+});
 
 /**
  * Lấy chi tiết phim theo slug
@@ -161,46 +162,37 @@ const getMovieDetailsBySlug = async (req, res) => {
 // GET /api/movies/search
 // Tìm kiếm phim theo từ khóa (trang mặc định là 1)
 // Đã nâng cấp để hỗ trợ tìm kiếm nâng cao với nhiều tham số
-const searchMovies = async (req, res) => {
+const searchMovies = asyncHandler(async (req, res) => {
   const {
     keyword,
     page = 1,
-    limit = 20, // Giới hạn mặc định nếu không được cung cấp
+    limit = 18, // Đổi limit mặc định cho nhất quán
     category,
     country,
     year,
     sort_field,
     sort_type,
-    sort_lang,
   } = req.query;
 
-  // Từ khóa vẫn là bắt buộc cho endpoint /v1/api/tim-kiem của API nguồn
-  // Tuy nhiên, nếu chúng ta muốn tìm kiếm nâng cao mà không cần keyword,
-  // API nguồn có thể không hỗ trợ trực tiếp.
-  // Tạm thời vẫn yêu cầu keyword hoặc xử lý logic nếu API nguồn cho phép keyword rỗng.
-  // Theo tài liệu API: "keyword = Từ khóa bạn cần tìm kiếm."
-  // Nếu không có keyword, có thể trả về lỗi hoặc không gọi API.
-  // Giả sử người dùng có thể muốn tìm kiếm chỉ theo thể loại, quốc gia mà không cần keyword.
-  // API /v1/api/tim-kiem có vẻ bắt buộc keyword.
-  // API /v1/api/danh-sach/{type_list} thì linh hoạt hơn nhưng lại thiếu keyword.
-  // Hiện tại, chúng ta sẽ bám theo /v1/api/tim-kiem và yêu cầu keyword hoặc một trường nào đó phải có.
-
-  // Nếu không có bất kỳ tham số nào ngoài page và limit, có thể coi là không hợp lệ
-  if (!keyword && !category && !country && !year && !sort_lang) {
-    // return res.status(400).json({ message: "Cần ít nhất một tiêu chí tìm kiếm (từ khóa, thể loại, quốc gia, năm, hoặc ngôn ngữ)." });
-    // Hoặc nếu API /tim-kiem bắt buộc keyword:
-    if (!keyword) {
-      return res.status(400).json({
-        message: "Từ khóa tìm kiếm là bắt buộc cho loại tìm kiếm này.",
-      });
-    }
+  // Nếu không có bất kỳ tham số nào, trả về lỗi
+  if (!keyword && !category && !country && !year) {
+    return res.status(400).json({
+      success: false,
+      message: "Cần ít nhất một tiêu chí tìm kiếm.",
+    });
   }
 
   try {
+    // API /tim-kiem yêu cầu keyword. Nếu không có keyword nhưng có các bộ lọc khác,
+    // chúng ta sẽ dùng một mẹo: tìm kiếm với keyword rỗng và bộ lọc.
+    // Nếu API không cho phép, ta cần tìm một API khác (ví dụ /danh-sach)
+    // Hoặc có thể gọi API /danh-sach/{type} nếu chỉ có một bộ lọc.
+    // Hiện tại, chúng ta thử chiến lược gọi /tim-kiem
     let apiUrl = `${PHIM_API_DOMAIN}/v1/api/tim-kiem?`;
     const queryParams = [];
 
-    if (keyword) queryParams.push(`keyword=${encodeURIComponent(keyword)}`);
+    // Luôn gửi keyword, dù là rỗng, vì API có thể yêu cầu
+    queryParams.push(`keyword=${encodeURIComponent(keyword || "")}`);
     queryParams.push(`page=${page}`);
     queryParams.push(`limit=${limit}`);
     if (category) queryParams.push(`category=${encodeURIComponent(category)}`);
@@ -208,24 +200,23 @@ const searchMovies = async (req, res) => {
     if (year) queryParams.push(`year=${year}`);
     if (sort_field) queryParams.push(`sort_field=${sort_field}`);
     if (sort_type) queryParams.push(`sort_type=${sort_type}`);
-    if (sort_lang) queryParams.push(`sort_lang=${sort_lang}`);
 
     apiUrl += queryParams.join("&");
 
     // console.log("Constructed API URL for advanced search:", apiUrl); // Để debug
 
-    const response = await axios.get(apiUrl);
+    const { data: response } = await axios.get(apiUrl);
 
     if (
+      response &&
       response.data &&
-      response.data.data &&
-      response.data.data.items &&
-      response.data.data.params &&
-      response.data.data.params.pagination
+      response.data.items &&
+      response.data.params &&
+      response.data.params.pagination
     ) {
       // Enrich search results with local movie metadata (ratings)
       const moviesWithMetadata = await Promise.all(
-        response.data.data.items.map(async (movie) => {
+        response.data.items.map(async (movie) => {
           try {
             // Try to get metadata from local database
             const movieMetadata = await MovieMetadata.findById(movie._id);
@@ -252,9 +243,9 @@ const searchMovies = async (req, res) => {
       res.json({
         success: true, // Thêm success flag cho nhất quán
         items: moviesWithMetadata,
-        pagination: response.data.data.params.pagination,
-        titlePage: response.data.data.titlePage, // API tìm kiếm cũng có thể có titlePage
-        appParams: response.data.data.appParams,
+        pagination: response.data.params.pagination,
+        titlePage: response.data.titlePage, // API tìm kiếm cũng có thể có titlePage
+        appParams: response.data.appParams,
       });
     } else {
       console.error(
@@ -289,7 +280,7 @@ const searchMovies = async (req, res) => {
       });
     }
   }
-};
+});
 
 // @desc    Fetch single movies (phim lẻ)
 // @route   GET /api/movies/single
@@ -435,51 +426,27 @@ const getMovieGenres = asyncHandler(async (req, res) => {
       `${PHIM_API_DOMAIN}/the-loai`
     );
 
-    // API https://phimapi.com/the-loai trả về trực tiếp một mảng các object thể loại
     if (apiResponse && Array.isArray(apiResponse)) {
       res.json({
         success: true,
-        genres: apiResponse,
+        items: apiResponse, // Đổi 'genres' thành 'items' cho nhất quán
       });
     } else {
-      // Nếu API trả về cấu trúc khác không mong đợi
       console.error(
-        "Unexpected API response structure for /the-loai. Expected an array. Received:",
+        "Unexpected API response structure for /the-loai:",
         apiResponse
       );
       res.status(500).json({
         success: false,
-        message:
-          "Dữ liệu thể loại trả về từ API nguồn không đúng định dạng mong đợi.",
+        message: "Dữ liệu thể loại không đúng định dạng.",
       });
     }
   } catch (error) {
-    console.error(
-      "Error fetching movie genres from source API:",
-      error.message
-    );
-    if (error.response) {
-      // Lỗi từ phía API nguồn (ví dụ: API nguồn bị 500, 404, etc.)
-      console.error(
-        "Error response data from source API:",
-        error.response.data
-      );
-      console.error(
-        "Error response status from source API:",
-        error.response.status
-      );
-      res.status(error.response.status || 500).json({
-        success: false,
-        message: "Lỗi từ API nguồn khi lấy danh sách thể loại.",
-        sourceError: error.response.data,
-      });
-    } else {
-      // Lỗi mạng hoặc lỗi khác không phải từ response của API nguồn
-      res.status(500).json({
-        success: false,
-        message: "Lỗi máy chủ nội bộ khi lấy danh sách thể loại.",
-      });
-    }
+    console.error("Error fetching movie genres:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ khi lấy danh sách thể loại.",
+    });
   }
 });
 
@@ -492,48 +459,27 @@ const getMovieCountries = asyncHandler(async (req, res) => {
       `${PHIM_API_DOMAIN}/quoc-gia`
     );
 
-    // API https://phimapi.com/quoc-gia trả về trực tiếp một mảng các object quốc gia
     if (apiResponse && Array.isArray(apiResponse)) {
       res.json({
         success: true,
-        countries: apiResponse,
+        items: apiResponse, // Đổi 'countries' thành 'items' cho nhất quán
       });
     } else {
       console.error(
-        "Unexpected API response structure for /quoc-gia. Expected an array. Received:",
+        "Unexpected API response structure for /quoc-gia:",
         apiResponse
       );
       res.status(500).json({
         success: false,
-        message:
-          "Dữ liệu quốc gia trả về từ API nguồn không đúng định dạng mong đợi.",
+        message: "Dữ liệu quốc gia không đúng định dạng.",
       });
     }
   } catch (error) {
-    console.error(
-      "Error fetching movie countries from source API:",
-      error.message
-    );
-    if (error.response) {
-      console.error(
-        "Error response data from source API:",
-        error.response.data
-      );
-      console.error(
-        "Error response status from source API:",
-        error.response.status
-      );
-      res.status(error.response.status || 500).json({
-        success: false,
-        message: "Lỗi từ API nguồn khi lấy danh sách quốc gia.",
-        sourceError: error.response.data,
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: "Lỗi máy chủ nội bộ khi lấy danh sách quốc gia.",
-      });
-    }
+    console.error("Error fetching movie countries:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ khi lấy danh sách quốc gia.",
+    });
   }
 });
 
@@ -542,12 +488,11 @@ const getMovieCountries = asyncHandler(async (req, res) => {
 // @access  Public
 const getMoviesByGenre = asyncHandler(async (req, res) => {
   const { slug } = req.params;
-  const page = req.query.page || 1;
+  const { page = 1, limit = 18 } = req.query; // Đặt mặc định là 18 cho nhất quán
 
   try {
-    const { data: apiResponse } = await axios.get(
-      `${PHIM_API_DOMAIN}/v1/api/the-loai/${slug}?page=${page}`
-    );
+    const apiUrl = `${PHIM_API_DOMAIN}/v1/api/the-loai/${slug}?page=${page}&limit=${limit}`;
+    const { data: apiResponse } = await axios.get(apiUrl);
 
     if (
       apiResponse &&
@@ -555,11 +500,10 @@ const getMoviesByGenre = asyncHandler(async (req, res) => {
       apiResponse.data &&
       apiResponse.data.items
     ) {
-      // Enrich genre movies with local movie metadata (ratings)
+      // Bổ sung metadata từ DB
       const moviesWithMetadata = await Promise.all(
         apiResponse.data.items.map(async (movie) => {
           try {
-            // Try to get metadata from local database
             const movieMetadata = await MovieMetadata.findById(movie._id);
             return {
               ...movie,
@@ -569,13 +513,13 @@ const getMoviesByGenre = asyncHandler(async (req, res) => {
               },
             };
           } catch (err) {
-            // If error, return movie without metadata
+            console.error(
+              `Error fetching metadata for movie ${movie._id} in genre list:`,
+              err
+            );
             return {
               ...movie,
-              movieMetadata: {
-                appAverageRating: 0,
-                appRatingCount: 0,
-              },
+              movieMetadata: { appAverageRating: 0, appRatingCount: 0 },
             };
           }
         })
@@ -598,13 +542,13 @@ const getMoviesByGenre = asyncHandler(async (req, res) => {
     }
   } catch (error) {
     console.error(`Error fetching movies for genre ${slug}:`, error.message);
-    res.status(error.response?.status || 500).json({
-      success: false,
-      message:
-        error.response?.data?.message ||
-        error.message ||
-        "Server error while fetching movies by genre",
-    });
+    if (error.response) {
+      console.error("Error response data:", error.response.data);
+      console.error("Error response status:", error.response.status);
+    }
+    res
+      .status(500)
+      .json({ success: false, message: "Lỗi máy chủ khi lấy dữ liệu." });
   }
 });
 

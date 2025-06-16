@@ -1,145 +1,139 @@
 import React from "react";
 import {
   Box,
-  SimpleGrid,
+  Flex,
+  Image,
+  Heading,
+  Text,
+  Tag,
   HStack,
   VStack,
   Icon,
-  Text,
-  Tag,
-  Heading,
+  Button,
 } from "@chakra-ui/react";
-import {
-  FaCalendarAlt,
-  FaClock,
-  FaGlobe,
-  FaVideo,
-  FaFilm,
-  FaTags,
-  FaUserFriends,
-} from "react-icons/fa";
+import { FaStar, FaRegStar, FaHeart } from "react-icons/fa";
+import { Link as RouterLink } from "react-router-dom";
+import Rating from "react-rating";
 
-const MovieInfo = ({ movie }) => {
+// Component để hiển thị một dòng thông tin
+const InfoRow = ({ label, children, isLink = false }) => (
+  <Flex as="p" wrap="wrap">
+    <Text as="span" fontWeight="bold" mr={2} color="whiteAlpha.800">
+      {label}:
+    </Text>
+    {isLink ? (
+      <HStack spacing={2} wrap="wrap">
+        {children}
+      </HStack>
+    ) : (
+      <Text as="span" color="whiteAlpha.700">
+        {children}
+      </Text>
+    )}
+  </Flex>
+);
+
+const MovieInfo = ({
+  movie,
+  movieMetadata,
+  isFavorited,
+  isFavoriteLoading,
+  onToggleFavorite,
+}) => {
   if (!movie) return null;
 
   return (
-    <VStack align="start" spacing={6}>
-      {/* Basic Info Grid */}
-      <SimpleGrid
-        columns={{ base: 1, md: 2 }}
-        spacingX={8}
-        spacingY={{ base: 3, md: 4 }}
-        w="full"
-      >
-        <HStack>
-          <Icon as={FaCalendarAlt} color="brand.accent" mr={2} />
-          <Text>
-            <strong>Năm:</strong> {movie.year || "N/A"}
-          </Text>
-        </HStack>
+    <Flex direction={{ base: "column", md: "row" }} gap={8}>
+      {/* Poster */}
+      <Box flex="0 0 200px" alignSelf={{ base: "center", md: "flex-start" }}>
+        <Image
+          src={movie.poster_url || movie.thumb_url}
+          alt={`Poster of ${movie.name}`}
+          borderRadius="lg"
+          boxShadow="lg"
+          w="full"
+          objectFit="cover"
+        />
+      </Box>
 
-        <HStack>
-          <Icon as={FaClock} color="brand.accent" mr={2} />
-          <Text>
-            <strong>Thời lượng:</strong> {movie.time || "N/A"}
-          </Text>
-        </HStack>
+      {/* Movie Details */}
+      <VStack align="start" spacing={4} flex={1}>
+        <InfoRow label="Tên khác">{movie.origin_name}</InfoRow>
+        <InfoRow label="Năm">{movie.year}</InfoRow>
+        <InfoRow label="Trạng thái">{movie.episode_current}</InfoRow>
+        <InfoRow label="Thời lượng">{movie.time}</InfoRow>
+        <InfoRow label="Đạo diễn" isLink>
+          {movie.director?.map((d) => (
+            <Tag key={d} size="sm" variant="outline" colorScheme="cyan">
+              {d}
+            </Tag>
+          ))}
+        </InfoRow>
+        <InfoRow label="Diễn viên" isLink>
+          {movie.actor?.map((a) => (
+            <Tag key={a} size="sm" variant="outline" colorScheme="purple">
+              {a}
+            </Tag>
+          ))}
+        </InfoRow>
+        <InfoRow label="Thể loại" isLink>
+          {movie.category?.map((cat) => (
+            <Tag
+              as={RouterLink}
+              to={`/genres/${cat.slug}`}
+              key={cat.id}
+              size="sm"
+              variant="solid"
+              colorScheme="orange"
+              _hover={{ bg: "orange.600" }}
+            >
+              {cat.name}
+            </Tag>
+          ))}
+        </InfoRow>
+        <InfoRow label="Quốc gia" isLink>
+          {movie.country?.map((c) => (
+            <Tag
+              as={RouterLink}
+              to={`/countries/${c.slug}`}
+              key={c.id}
+              size="sm"
+              variant="solid"
+              colorScheme="teal"
+              _hover={{ bg: "teal.600" }}
+            >
+              {c.name}
+            </Tag>
+          ))}
+        </InfoRow>
 
-        <HStack>
-          <Icon as={FaGlobe} color="brand.accent" mr={2} />
-          <Text>
-            <strong>Quốc gia:</strong>{" "}
-            {movie.country?.map((c) => c.name).join(", ") || "N/A"}
-          </Text>
-        </HStack>
-
-        <HStack>
-          <Icon as={FaVideo} color="brand.accent" mr={2} />
-          <Text>
-            <strong>Chất lượng:</strong> {movie.quality || "N/A"}
-          </Text>
-        </HStack>
-
-        <HStack>
-          <Icon as={FaFilm} color="brand.accent" mr={2} />
-          <Text>
-            <strong>Ngôn ngữ:</strong> {movie.lang || "N/A"}
-          </Text>
-        </HStack>
-
-        <HStack>
-          <Icon as={FaTags} color="brand.accent" mr={2} />
-          <Text>
-            <strong>Trạng thái:</strong> {movie.episode_current || "N/A"}
-          </Text>
-        </HStack>
-
-        {/* Director */}
-        <Box gridColumn={{ base: "auto", md: "span 2" }}>
-          <HStack mb={2}>
-            <Icon as={FaUserFriends} color="brand.accent" mr={2} />
-            <Text>
-              <strong>Đạo diễn:</strong>
-            </Text>
-          </HStack>
-          <Text ml={6} color="gray.300">
-            {movie.director?.join(", ") || "N/A"}
-          </Text>
-        </Box>
-
-        {/* Genre */}
-        <Box gridColumn={{ base: "auto", md: "span 2" }}>
-          <HStack mb={2}>
-            <Icon as={FaTags} color="brand.accent" mr={2} />
-            <Text>
-              <strong>Thể loại:</strong>
-            </Text>
-          </HStack>
-          <HStack spacing={2} mt={1} wrap="wrap" ml={6}>
-            {movie.category?.map((cat) => (
-              <Tag
-                key={cat.slug}
-                size="sm"
-                variant="solid"
-                colorScheme="gray"
-                m={0.5}
-              >
-                {cat.name}
-              </Tag>
-            ))}
-          </HStack>
-        </Box>
-
-        {/* Actors */}
-        <Box gridColumn={{ base: "auto", md: "span 2" }}>
-          <HStack mb={2}>
-            <Icon as={FaUserFriends} color="brand.accent" mr={2} />
-            <Text>
-              <strong>Diễn viên:</strong>
-            </Text>
-          </HStack>
-          <HStack spacing={2} mt={1} wrap="wrap" ml={6}>
-            {movie.actor && movie.actor.length > 0 ? (
-              movie.actor.map((act, idx) => (
-                <Tag
-                  key={`${act}-${idx}`}
-                  size="sm"
-                  variant="outline"
-                  colorScheme="teal"
-                  m={0.5}
-                >
-                  {act}
-                </Tag>
-              ))
-            ) : (
-              <Text fontSize="sm" color="text.disabled">
-                Không có thông tin.
+        {/* Rating and Favorite Button */}
+        <HStack spacing={4} mt={4} w="full">
+          {movieMetadata && (
+            <HStack spacing={1} align="center">
+              <Rating
+                initialRating={movieMetadata.appAverageRating || 0}
+                readonly
+                emptySymbol={<Icon as={FaRegStar} color="gray.400" />}
+                fullSymbol={<Icon as={FaStar} color="yellow.400" />}
+              />
+              <Text fontSize="sm" color="gray.400" ml={2}>
+                ({movieMetadata.appRatingCount || 0} đánh giá)
               </Text>
-            )}
-          </HStack>
-        </Box>
-      </SimpleGrid>
-    </VStack>
+            </HStack>
+          )}
+          <Button
+            leftIcon={<FaHeart />}
+            colorScheme={isFavorited ? "pink" : "gray"}
+            variant={isFavorited ? "solid" : "outline"}
+            isLoading={isFavoriteLoading}
+            onClick={onToggleFavorite}
+          >
+            {isFavorited ? "Đã yêu thích" : "Thêm vào yêu thích"}
+          </Button>
+        </HStack>
+      </VStack>
+    </Flex>
   );
 };
 

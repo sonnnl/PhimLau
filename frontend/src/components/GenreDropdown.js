@@ -35,9 +35,9 @@ const GenreDropdown = ({ currentGenreLabel = "Thể loại" }) => {
         if (
           response.data &&
           response.data.success &&
-          Array.isArray(response.data.genres)
+          Array.isArray(response.data.items)
         ) {
-          setGenres(response.data.genres);
+          setGenres(response.data.items);
         } else {
           console.error(
             "API response for genres is not as expected:",

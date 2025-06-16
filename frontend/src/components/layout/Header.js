@@ -329,6 +329,22 @@ export default function Header() {
                           <Text ml={2}>Bài viết của tôi</Text>
                         </Button>
 
+                        <Button
+                          as={RouterLink}
+                          to="/my-favorites"
+                          w="full"
+                          variant="ghost"
+                          justifyContent="flex-start"
+                          leftIcon={<Text fontSize="16px">❤️</Text>}
+                          _hover={{ bg: "brand.700", color: "brand.accent" }}
+                          py={3}
+                          fontSize="sm"
+                          fontWeight="medium"
+                          borderRadius="lg"
+                        >
+                          <Text ml={2}>Phim yêu thích</Text>
+                        </Button>
+
                         {user?.role === "admin" && (
                           <>
                             <Box w="full" h="1px" bg="brand.600" my={2} />

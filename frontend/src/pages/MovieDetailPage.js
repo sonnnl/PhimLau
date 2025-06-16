@@ -23,6 +23,7 @@ import {
 } from "@chakra-ui/react";
 import movieService from "../services/movieService";
 import { useAuth } from "../contexts/AuthContext";
+import favoriteService from "../services/favoriteService";
 
 // Import custom components
 import VideoPlayer from "../components/movie-detail/VideoPlayer";
@@ -39,6 +40,10 @@ const MovieDetailPage = () => {
   const [movieDetails, setMovieDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Favorite state
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(true);
 
   // Video player states
   const [selectedServerIndex, setSelectedServerIndex] = useState(0);
@@ -176,6 +181,55 @@ const MovieDetailPage = () => {
 
     fetchDetails();
   }, [slug]);
+
+  // Check favorite status when user or movie details are loaded
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (isAuthenticated && movieDetails?.movie?._id) {
+        setIsFavoriteLoading(true);
+        try {
+          const status = await favoriteService.checkFavoriteStatus(
+            movieDetails.movie._id
+          );
+          setIsFavorited(status.isFavorited);
+        } catch (err) {
+          console.error("Failed to check favorite status:", err);
+          // Don't set an error, just assume not favorited
+          setIsFavorited(false);
+        } finally {
+          setIsFavoriteLoading(false);
+        }
+      } else {
+        setIsFavoriteLoading(false);
+        setIsFavorited(false);
+      }
+    };
+    checkStatus();
+  }, [isAuthenticated, movieDetails]);
+
+  // Handle favorite button toggle
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated || !movieDetails?.movie?._id) {
+      navigate("/login"); // Redirect to login if not authenticated
+      return;
+    }
+
+    setIsFavoriteLoading(true);
+    try {
+      if (isFavorited) {
+        await favoriteService.removeFavorite(movieDetails.movie._id);
+        setIsFavorited(false);
+      } else {
+        await favoriteService.addFavorite(movieDetails.movie._id);
+        setIsFavorited(true);
+      }
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+      // Optional: show a toast notification on error
+    } finally {
+      setIsFavoriteLoading(false);
+    }
+  };
 
   // Save watch state to localStorage
   useEffect(() => {
@@ -320,7 +374,13 @@ const MovieDetailPage = () => {
         <TabPanels>
           {/* Movie Info Tab */}
           <TabPanel>
-            <MovieInfo movie={movie} />
+            <MovieInfo
+              movie={movie}
+              movieMetadata={movieMetadata}
+              isFavorited={isFavorited}
+              isFavoriteLoading={isFavoriteLoading}
+              onToggleFavorite={handleToggleFavorite}
+            />
           </TabPanel>
 
           {/* Content Tab */}
