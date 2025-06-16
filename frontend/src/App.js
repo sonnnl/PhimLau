@@ -24,7 +24,15 @@ const HomePage = lazy(() => import("./pages/HomePage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const AuthCallbackPage = lazy(() => import("./pages/AuthCallbackPage"));
-// const ProfilePage = lazy(() => import("./pages/ProfilePage")); // Tạm thời comment out
+const EmailVerificationPage = lazy(() =>
+  import("./pages/EmailVerificationPage")
+);
+const ResendVerificationPage = lazy(() =>
+  import("./pages/ResendVerificationPage")
+);
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 // Thêm MovieDetailPage sau khi tạo
 const MovieDetailPage = lazy(() => import("./pages/MovieDetailPage"));
 const SearchResultsPage = lazy(() => import("./pages/SearchResultsPage"));
@@ -35,18 +43,15 @@ const ForumThreadDetailPage = lazy(() =>
   import("./pages/ForumThreadDetailPage")
 );
 const CreateThreadPage = lazy(() => import("./pages/CreateThreadPage"));
+const MyThreadsPage = lazy(() => import("./pages/MyThreadsPage"));
 const SingleMoviesPage = lazy(() => import("./pages/SingleMoviesPage"));
 const SeriesMoviesPage = lazy(() => import("./pages/SeriesMoviesPage"));
 const GenrePage = lazy(() => import("./pages/GenrePage"));
 
 // Admin pages
-const AdminDashboard = lazy(() => import("./admin/pages/AdminDashboard"));
-const AdminUsers = lazy(() => import("./admin/pages/AdminUsers"));
-const AdminNotifications = lazy(() =>
-  import("./admin/pages/AdminNotifications")
-);
 const AdminSetup = lazy(() => import("./admin/pages/AdminSetup"));
-const AdminRoute = lazy(() => import("./components/admin/AdminRoute"));
+const AdminRoutes = lazy(() => import("./admin/routes/AdminRoutes"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 
 // Component ProtectedRoute
 const ProtectedRoute = ({ children }) => {
@@ -113,18 +118,39 @@ function App() {
                     </AuthenticatedRedirect>
                   }
                 />
+                <Route path="/auth/callback" element={<AuthCallbackPage />} />
                 <Route
-                  path="/auth/google/callback"
-                  element={<AuthCallbackPage />}
+                  path="/verify-email/:token"
+                  element={<EmailVerificationPage />}
                 />
-                {/* <Route
+                <Route
+                  path="/resend-verification"
+                  element={<ResendVerificationPage />}
+                />
+                <Route
+                  path="/forgot-password"
+                  element={
+                    <AuthenticatedRedirect>
+                      <ForgotPasswordPage />
+                    </AuthenticatedRedirect>
+                  }
+                />
+                <Route
+                  path="/reset-password/:token"
+                  element={
+                    <AuthenticatedRedirect>
+                      <ResetPasswordPage />
+                    </AuthenticatedRedirect>
+                  }
+                />
+                <Route
                   path="/profile"
                   element={
                     <ProtectedRoute>
                       <ProfilePage />
                     </ProtectedRoute>
                   }
-                /> */}
+                />
                 <Route path="/movie/:slug" element={<MovieDetailPage />} />
                 <Route path="/search" element={<SearchResultsPage />} />
                 <Route path="/movies/latest" element={<LatestMoviesPage />} />
@@ -148,35 +174,28 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/my-threads"
+                  element={
+                    <ProtectedRoute>
+                      <MyThreadsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/notifications"
+                  element={
+                    <ProtectedRoute>
+                      <NotificationsPage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* Admin setup route (public) */}
                 <Route path="/admin/setup" element={<AdminSetup />} />
 
                 {/* Admin routes */}
-                <Route
-                  path="/admin"
-                  element={
-                    <AdminRoute>
-                      <AdminDashboard />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="/admin/users"
-                  element={
-                    <AdminRoute>
-                      <AdminUsers />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="/admin/notifications"
-                  element={
-                    <AdminRoute>
-                      <AdminNotifications />
-                    </AdminRoute>
-                  }
-                />
+                <Route path="/admin/*" element={<AdminRoutes />} />
 
                 {/* Fallback route cho các đường dẫn không khớp */}
                 <Route path="*" element={<Navigate to="/" replace />} />

@@ -12,6 +12,8 @@ import {
   Avatar,
   VStack,
   Flex,
+  Tooltip,
+  Badge,
 } from "@chakra-ui/react";
 import { Link as RouterLink } from "react-router-dom";
 import {
@@ -19,6 +21,7 @@ import {
   FiChevronRight,
   FiClock,
   FiMessageSquare,
+  FiBookmark,
 } from "react-icons/fi";
 
 // Helper function to format date
@@ -88,16 +91,58 @@ const ThreadDetailHeader = ({ thread, categoryName }) => {
       {/* Thread Header */}
       <Box
         p={6}
-        bg="background.secondary"
+        bg={thread.isPinned ? "purple.900" : "background.secondary"}
         rounded="lg"
         shadow="md"
         borderLeft="4px solid"
-        borderLeftColor="brand.accent"
+        borderLeftColor={thread.isPinned ? "purple.400" : "brand.accent"}
+        position="relative"
+        // ✨ PINNED THREAD STYLING
+        {...(thread.isPinned && {
+          borderWidth: "2px",
+          borderColor: "purple.400",
+          shadow: "xl",
+        })}
       >
         <VStack align="start" spacing={4}>
-          <Heading as="h1" size="lg" color="whiteAlpha.900" lineHeight="1.3">
-            {thread.title}
-          </Heading>
+          <HStack spacing={3} align="start" w="full">
+            {/* ✨ PINNED ICON */}
+            {thread.isPinned && (
+              <Tooltip label="Bài viết được ghim" placement="top">
+                <Icon
+                  as={FiBookmark}
+                  color="purple.300"
+                  boxSize={6}
+                  transform="rotate(15deg)"
+                  mt={1}
+                />
+              </Tooltip>
+            )}
+            <VStack align="start" spacing={2} flex={1}>
+              <Heading
+                as="h1"
+                size="lg"
+                color="whiteAlpha.900"
+                lineHeight="1.3"
+              >
+                {thread.title}
+              </Heading>
+              {/* ✨ PINNED BADGE */}
+              {thread.isPinned && (
+                <Badge
+                  colorScheme="purple"
+                  size="md"
+                  variant="solid"
+                  fontWeight="bold"
+                  px={3}
+                  py={1}
+                  borderRadius="full"
+                >
+                  📌 BÀI VIẾT ĐƯỢC GHIM
+                </Badge>
+              )}
+            </VStack>
+          </HStack>
 
           <Flex
             w="full"

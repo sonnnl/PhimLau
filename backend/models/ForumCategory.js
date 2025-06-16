@@ -18,7 +18,45 @@ const ForumCategorySchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // Thêm các trường cho admin quản lý
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
+  order: {
+    type: Number,
+    default: 0,
+  },
+  icon: {
+    type: String,
+    default: null,
+  },
+  color: {
+    type: String,
+    default: "#007bff",
+  },
+  // Quyền truy cập
+  allowedRoles: [
+    {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+  ],
+  createdBy: {
+    type: mongoose.Schema.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  lastModifiedBy: {
+    type: mongoose.Schema.ObjectId,
+    ref: "User",
+  },
   createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
     type: Date,
     default: Date.now,
   },
@@ -30,6 +68,7 @@ ForumCategorySchema.pre("save", function (next) {
     next();
   }
   this.slug = slugify(this.name, { lower: true, strict: true, locale: "vi" });
+  this.updatedAt = Date.now();
   next();
 });
 
@@ -44,7 +83,12 @@ ForumCategorySchema.pre("findOneAndUpdate", async function (next) {
     });
     this.set({ slug: newSlug });
   }
+  this.set({ updatedAt: Date.now() });
   next();
 });
+
+// Index để tăng hiệu suất
+ForumCategorySchema.index({ order: 1, isActive: 1 });
+ForumCategorySchema.index({ slug: 1 });
 
 export default mongoose.model("ForumCategory", ForumCategorySchema);

@@ -2,95 +2,125 @@ import mongoose from "mongoose";
 
 const notificationSchema = new mongoose.Schema(
   {
-    title: {
-      type: String,
-      required: [true, "Tiêu đề thông báo là bắt buộc"],
-      trim: true,
-      maxlength: [100, "Tiêu đề không được vượt quá 100 ký tự"],
+    // Người nhận thông báo
+    recipient: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
     },
-    message: {
-      type: String,
-      required: [true, "Nội dung thông báo là bắt buộc"],
-      trim: true,
-      maxlength: [1000, "Nội dung không được vượt quá 1000 ký tự"],
-    },
-    type: {
-      type: String,
-      enum: ["info", "warning", "success", "error", "announcement"],
-      default: "info",
-    },
-    // Người gửi (admin)
+
+    // Người gửi/tạo ra thông báo (có thể null cho system notifications)
     sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      default: null,
     },
-    // Người nhận (nếu null = gửi cho tất cả)
-    recipients: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    // Kiểu gửi
-    sendType: {
-      type: String,
-      enum: ["all", "specific", "role"], // all users, specific users, by role
-      default: "all",
-    },
-    // Lọc theo role (nếu sendType = "role")
-    targetRole: {
-      type: String,
-      enum: ["user", "admin"],
-    },
-    // Trạng thái
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    // Thời gian hết hạn (optional)
-    expiresAt: {
-      type: Date,
-    },
-    // Metadata cho frontend
-    metadata: {
-      icon: String, // emoji hoặc icon name
-      color: String, // màu sắc
-      actionUrl: String, // link để click vào
-      actionText: String, // text cho button action
-    },
-    // Thống kê
-    stats: {
-      sent: { type: Number, default: 0 },
-      delivered: { type: Number, default: 0 },
-      read: { type: Number, default: 0 },
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
 
-// Model cho việc tracking đã đọc thông báo
-const notificationReadSchema = new mongoose.Schema(
-  {
-    notification: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Notification",
+    // Loại thông báo
+    type: {
+      type: String,
+      enum: [
+        "thread_reply", // Có người reply thread của bạn
+        "thread_like", // Có người like thread của bạn
+        "reply_like", // Có người like reply của bạn
+        "mention", // Có người mention bạn
+        "follow", // Có người follow bạn
+        "system", // Thông báo hệ thống
+        "admin_message", // Tin nhắn từ admin
+        "moderation", // Thông báo kiểm duyệt
+        "moderation_warning", // Cảnh báo vi phạm
+        "account_suspended", // Tài khoản bị tạm khóa
+        "account_banned", // Tài khoản bị cấm
+        "content_removed", // Nội dung bị xóa
+        "content_edited", // Nội dung cần chỉnh sửa
+      ],
       required: true,
+      index: true,
     },
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+
+    // Tiêu đề thông báo
+    title: {
+      type: String,
       required: true,
+      maxlength: 200,
     },
+
+    // Nội dung thông báo
+    message: {
+      type: String,
+      required: true,
+      maxlength: 500,
+    },
+
+    // Link để chuyển hướng khi click thông báo (thêm vào)
+    link: {
+      type: String,
+      default: null,
+    },
+
+    // Link để chuyển hướng khi click thông báo
+    actionUrl: {
+      type: String,
+      default: null,
+    },
+
+    // Metadata liên quan (thread, reply, etc.)
+    relatedData: {
+      threadId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ForumThread",
+        default: null,
+      },
+      replyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ForumReply",
+        default: null,
+      },
+      categoryId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ForumCategory",
+        default: null,
+      },
+    },
+
+    // Trạng thái đã đọc
+    isRead: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    // Đã click vào thông báo chưa
+    isClicked: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Thời gian đọc
     readAt: {
       type: Date,
-      default: Date.now,
+      default: null,
     },
-    // Metadata khi đọc
-    device: String, // web, mobile, etc.
-    ip: String,
+
+    // Thời gian click
+    clickedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // Ưu tiên thông báo
+    priority: {
+      type: String,
+      enum: ["low", "normal", "high", "urgent"],
+      default: "normal",
+    },
+
+    // Thời gian hết hạn (cho thông báo tạm thời)
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -98,102 +128,61 @@ const notificationReadSchema = new mongoose.Schema(
 );
 
 // Indexes for performance
-notificationSchema.index({ createdAt: -1 });
-notificationSchema.index({ sendType: 1, isActive: 1 });
-notificationSchema.index({ recipients: 1 });
-notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // Auto delete expired
+notificationSchema.index({ recipient: 1, createdAt: -1 });
+notificationSchema.index({ recipient: 1, isRead: 1 });
+notificationSchema.index({ recipient: 1, type: 1 });
+notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-notificationReadSchema.index({ notification: 1, user: 1 }, { unique: true });
-notificationReadSchema.index({ user: 1, createdAt: -1 });
+// Static method để tạo thông báo
+notificationSchema.statics.createNotification = async function ({
+  recipient,
+  sender = null,
+  type,
+  title,
+  message,
+  actionUrl = null,
+  relatedData = {},
+  priority = "normal",
+  expiresAt = null,
+}) {
+  // Kiểm tra không tự gửi thông báo cho chính mình
+  if (sender && recipient.toString() === sender.toString()) {
+    return null;
+  }
 
-// Static methods
-notificationSchema.statics.getActiveNotifications = async function (userId) {
-  const now = new Date();
-
-  return await this.find({
-    isActive: true,
-    $or: [
-      { expiresAt: { $exists: false } },
-      { expiresAt: null },
-      { expiresAt: { $gt: now } },
-    ],
-    $or: [
-      { sendType: "all" },
-      { recipients: userId },
-      {
-        sendType: "role",
-        // Will need to join with User to check role
-      },
-    ],
-  })
-    .populate("sender", "username displayName")
-    .sort({ createdAt: -1 });
+  return await this.create({
+    recipient,
+    sender,
+    type,
+    title,
+    message,
+    actionUrl,
+    relatedData,
+    priority,
+    expiresAt,
+  });
 };
 
-notificationSchema.statics.markAsRead = async function (
-  notificationId,
-  userId,
-  metadata = {}
-) {
-  const NotificationRead = mongoose.model("NotificationRead");
-
-  try {
-    await NotificationRead.findOneAndUpdate(
-      { notification: notificationId, user: userId },
-      {
-        $set: {
-          readAt: new Date(),
-          ...metadata,
-        },
-      },
-      { upsert: true, new: true }
-    );
-
-    // Update stats
-    const readCount = await NotificationRead.countDocuments({
-      notification: notificationId,
-    });
-    await this.findByIdAndUpdate(notificationId, {
-      "stats.read": readCount,
-    });
-
-    return true;
-  } catch (error) {
-    console.error("Error marking notification as read:", error);
-    return false;
+// Method đánh dấu đã đọc
+notificationSchema.methods.markAsRead = async function () {
+  if (!this.isRead) {
+    this.isRead = true;
+    this.readAt = new Date();
+    await this.save();
   }
+  return this;
 };
 
-// Middleware to update stats after save
-notificationSchema.post("save", async function () {
-  try {
-    const User = mongoose.model("User");
-
-    if (this.sendType === "all") {
-      const userCount = await User.countDocuments();
-      this.stats.sent = userCount;
-    } else if (this.sendType === "specific") {
-      this.stats.sent = this.recipients.length;
-    } else if (this.sendType === "role" && this.targetRole) {
-      const userCount = await User.countDocuments({ role: this.targetRole });
-      this.stats.sent = userCount;
-    }
-
-    if (this.stats.sent > 0) {
-      await this.constructor.findByIdAndUpdate(this._id, {
-        "stats.sent": this.stats.sent,
-      });
-    }
-  } catch (error) {
-    console.error("Error updating notification stats:", error);
+// Method đánh dấu đã click
+notificationSchema.methods.markAsClicked = async function () {
+  if (!this.isClicked) {
+    this.isClicked = true;
+    this.clickedAt = new Date();
+    await this.save();
   }
-});
+  return this;
+};
 
 const Notification = mongoose.model("Notification", notificationSchema);
-const NotificationRead = mongoose.model(
-  "NotificationRead",
-  notificationReadSchema
-);
 
-export { Notification, NotificationRead };
 export default Notification;

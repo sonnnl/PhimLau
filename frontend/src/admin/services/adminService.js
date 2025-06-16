@@ -7,6 +7,9 @@ const adminAPI = axios.create({
   baseURL: `${API_URL}/admin`,
   headers: {
     "Content-Type": "application/json",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
   },
 });
 
@@ -76,6 +79,20 @@ export const updateUserRole = async (userId, role) => {
   }
 };
 
+export const updateUserStatus = async (userId, statusData) => {
+  try {
+    const response = await adminAPI.patch(
+      `/users/${userId}/status`,
+      statusData
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Lỗi khi cập nhật trạng thái"
+    );
+  }
+};
+
 export const deleteUser = async (userId) => {
   try {
     const response = await adminAPI.delete(`/users/${userId}`);
@@ -139,23 +156,54 @@ export const getAllNotifications = async (params = {}) => {
   }
 };
 
+// Export adminAPI instance for direct use
+export const adminApiClient = adminAPI;
+
 // ================================
-// UTILITY FUNCTIONS
+// REPORT SERVICES
 // ================================
-export const testAdminAccess = async () => {
+export const getReportDetails = async (reportId) => {
   try {
-    const response = await adminAPI.get("/stats");
-    return {
-      success: true,
-      message: "✅ Admin access OK!",
-      data: response.data,
-    };
+    const response = await adminApiClient.get(`/forum/reports/${reportId}`);
+    return response.data;
   } catch (error) {
-    return {
-      success: false,
-      message: `❌ Lỗi: ${error.response?.data?.message || error.message}`,
-      status: error.response?.status,
-    };
+    throw error.response?.data || new Error("Không thể lấy chi tiết báo cáo");
+  }
+};
+
+/**
+ * Resolves a report by deleting the content.
+ * @param {string} reportId - The ID of the report to resolve.
+ * @returns {Promise<Object>} The API response.
+ */
+const resolveReportAndDelete = async (reportId) => {
+  try {
+    const response = await adminApiClient.post(
+      `/forum/reports/${reportId}/delete`
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || new Error("Không thể xóa nội dung");
+  }
+};
+
+/**
+ * Resolves a report by requesting an edit from the user.
+ * @param {string} reportId - The ID of the report to resolve.
+ * @param {string} reason - The reason for the edit request.
+ * @returns {Promise<Object>} The API response.
+ */
+const resolveReportAndRequestEdit = async (reportId, reason) => {
+  try {
+    const response = await adminApiClient.post(
+      `/forum/reports/${reportId}/request-edit`,
+      { reason }
+    );
+    return response.data;
+  } catch (error) {
+    throw (
+      error.response?.data || new Error("Không thể yêu cầu chỉnh sửa nội dung")
+    );
   }
 };
 
@@ -167,6 +215,7 @@ export default {
   // User Management
   getAllUsers,
   updateUserRole,
+  updateUserStatus,
   deleteUser,
   createFirstAdmin,
 
@@ -175,6 +224,10 @@ export default {
   getNotificationStats,
   getAllNotifications,
 
-  // Utility
-  testAdminAccess,
+  // Report
+  getReportDetails,
+
+  // New functions
+  resolveReportAndDelete,
+  resolveReportAndRequestEdit,
 };

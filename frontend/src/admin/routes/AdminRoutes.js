@@ -1,0 +1,26 @@
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import AdminRoute from "../components/AdminRoute";
+import AdminDashboard from "../pages/AdminDashboard";
+import AdminUsers from "../pages/AdminUsers";
+import AdminNotifications from "../pages/AdminNotifications";
+import AdminForumCategories from "../pages/AdminForumCategories";
+import AdminForumThreads from "../pages/AdminForumThreads";
+import AdminForumReports from "../pages/AdminForumReports";
+
+const AdminRoutes = () => {
+  return (
+    <AdminRoute>
+      <Routes>
+        <Route path="/" element={<AdminDashboard />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="notifications" element={<AdminNotifications />} />
+        <Route path="forum/categories" element={<AdminForumCategories />} />
+        <Route path="forum/threads" element={<AdminForumThreads />} />
+        <Route path="forum/reports" element={<AdminForumReports />} />
+      </Routes>
+    </AdminRoute>
+  );
+};
+
+export default AdminRoutes;

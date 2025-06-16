@@ -78,15 +78,31 @@ export default function RegisterPage() {
         password,
         displayName: displayName || username,
       });
-      login(data.token);
-      toast({
-        title: "Đăng ký thành công!",
-        description: "Chào mừng bạn đến với MyMovieApp.",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-      navigate("/");
+
+      // Kiểm tra xem có cần verification không
+      if (data.needsVerification) {
+        // Chuyển hướng đến trang login với thông báo nhất quán
+        navigate("/login", {
+          state: {
+            message:
+              "Tài khoản đã được tạo thành công! Vui lòng kiểm tra email để xác nhận tài khoản trước khi đăng nhập.",
+            email: data.email,
+            needsVerification: true,
+            showResendOption: true,
+          },
+        });
+      } else {
+        // Trường hợp đặc biệt (có thể là admin tạo tài khoản đã verify sẵn)
+        login(data.token);
+        toast({
+          title: "Đăng ký thành công!",
+          description: "Chào mừng bạn đến với MyMovieApp.",
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+        navigate("/");
+      }
     } catch (err) {
       const errorMessage =
         err.response && err.response.data && err.response.data.message
@@ -106,8 +122,8 @@ export default function RegisterPage() {
         duration: 5000,
         isClosable: true,
       });
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   return (

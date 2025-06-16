@@ -20,12 +20,15 @@ import {
   MenuDivider,
   Avatar,
   Text,
+  VStack,
+  Badge,
 } from "@chakra-ui/react";
 import { HamburgerIcon, CloseIcon, SearchIcon } from "@chakra-ui/icons";
 import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom";
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { AuthContext } from "../../contexts/AuthContext";
 import GenreDropdown from "../GenreDropdown";
+import NotificationBell from "../notifications/NotificationBell";
 
 // Thay thế bằng logo thực của bạn trong thư mục frontend/src/assets/logo.png
 const Logo = () => (
@@ -71,7 +74,18 @@ export default function Header() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isAuthenticated, user, logout, loading } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+
+  // State cho profile dropdown hover
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const hoverTimeoutRef = useRef(null);
+
+  // Tự động đóng dropdown khi route thay đổi
+  useEffect(() => {
+    onClose();
+    setIsProfileDropdownOpen(false);
+  }, [location.pathname, onClose]);
 
   const handleLogout = () => {
     logout();
@@ -84,6 +98,20 @@ export default function Header() {
       navigate(`/search?keyword=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery(""); // Optional: clear search input after submit
     }
+  };
+
+  // Xử lý hover cho profile dropdown
+  const handleProfileMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    setIsProfileDropdownOpen(true);
+  };
+
+  const handleProfileMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsProfileDropdownOpen(false);
+    }, 300); // Delay 300ms trước khi đóng
   };
 
   return (
@@ -152,59 +180,190 @@ export default function Header() {
                 Loading...
               </Text>
             ) : isAuthenticated && user ? (
-              <Menu>
-                <MenuButton
-                  as={Button}
-                  rounded={"full"}
-                  variant={"link"}
-                  cursor={"pointer"}
-                  minW={0}
+              <HStack spacing={2}>
+                <NotificationBell />
+                <Box
+                  position="relative"
+                  onMouseEnter={handleProfileMouseEnter}
+                  onMouseLeave={handleProfileMouseLeave}
                 >
-                  <Avatar
-                    size={"sm"}
-                    src={
-                      user.avatarUrl ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        user.displayName || user.email
-                      )}&background=random&color=fff&size=30`
-                    }
-                    name={user.displayName || user.email}
-                  />
-                </MenuButton>
-                <MenuList bg="background.card" borderColor="brand.700">
-                  <MenuItem
-                    bg="background.card"
-                    _hover={{ bg: "brand.800", color: "brand.accent" }}
-                    as={RouterLink}
-                    to="/profile"
+                  <Button
+                    rounded={"full"}
+                    variant={"link"}
+                    cursor={"pointer"}
+                    minW={0}
+                    _hover={{
+                      transform: "scale(1.05)",
+                      transition: "transform 0.2s",
+                    }}
+                    p={0}
                   >
-                    Trang Cá Nhân
-                  </MenuItem>
-                  {user?.role === "admin" && (
-                    <>
-                      <MenuDivider borderColor="brand.700" />
-                      <MenuItem
-                        bg="background.card"
-                        _hover={{ bg: "red.500", color: "white" }}
-                        as={RouterLink}
-                        to="/admin"
-                        color="red.400"
-                        fontWeight="bold"
+                    <Avatar
+                      size={"sm"}
+                      src={
+                        user.avatarUrl ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                          user.displayName || user.email
+                        )}&background=random&color=fff&size=30`
+                      }
+                      name={user.displayName || user.email}
+                      border="2px solid"
+                      borderColor="brand.accent"
+                    />
+                  </Button>
+
+                  {/* Dropdown Content */}
+                  {isProfileDropdownOpen && (
+                    <Box
+                      position="absolute"
+                      top="100%"
+                      right={0}
+                      mt={2}
+                      bg="background.card"
+                      borderColor="brand.700"
+                      border="1px solid"
+                      borderRadius="xl"
+                      boxShadow="2xl"
+                      minW="280px"
+                      py={4}
+                      zIndex="dropdown"
+                      overflow="hidden"
+                    >
+                      {/* User Info Header - Redesigned */}
+                      <Box
+                        px={6}
+                        py={3}
+                        mb={3}
+                        bg="linear-gradient(135deg, var(--chakra-colors-brand-800), var(--chakra-colors-brand-900))"
                       >
-                        🛡️ Admin Panel
-                      </MenuItem>
-                    </>
+                        <HStack spacing={4} align="center">
+                          <Avatar
+                            size="md"
+                            src={
+                              user.avatarUrl ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                user.displayName || user.email
+                              )}&background=random&color=fff&size=48`
+                            }
+                            name={user.displayName || user.email}
+                            border="2px solid"
+                            borderColor="brand.accent"
+                          />
+                          <VStack spacing={1} align="start" flex={1}>
+                            <Text
+                              fontWeight="bold"
+                              color="white"
+                              fontSize="md"
+                              noOfLines={1}
+                            >
+                              {user.displayName || user.email}
+                            </Text>
+                            <Text fontSize="xs" color="gray.300" noOfLines={1}>
+                              @{user.username || user.email.split("@")[0]}
+                            </Text>
+                            <HStack spacing={2} mt={1}>
+                              <Badge
+                                colorScheme={
+                                  user.role === "admin" ? "red" : "blue"
+                                }
+                                size="sm"
+                                variant="solid"
+                                fontSize="xs"
+                              >
+                                {user.role === "admin" ? "👑 Admin" : "👤 User"}
+                              </Badge>
+                              {user.isVerified && (
+                                <Badge
+                                  colorScheme="green"
+                                  size="sm"
+                                  variant="solid"
+                                  fontSize="xs"
+                                >
+                                  ✓ Verified
+                                </Badge>
+                              )}
+                            </HStack>
+                          </VStack>
+                        </HStack>
+                      </Box>
+
+                      {/* Menu Items - Redesigned */}
+                      <VStack spacing={1} px={2}>
+                        <Button
+                          as={RouterLink}
+                          to="/profile"
+                          w="full"
+                          variant="ghost"
+                          justifyContent="flex-start"
+                          leftIcon={<Text fontSize="16px">👤</Text>}
+                          _hover={{ bg: "brand.700", color: "brand.accent" }}
+                          py={3}
+                          fontSize="sm"
+                          fontWeight="medium"
+                          borderRadius="lg"
+                        >
+                          <Text ml={2}>Trang Cá Nhân</Text>
+                        </Button>
+
+                        <Button
+                          as={RouterLink}
+                          to="/my-threads"
+                          w="full"
+                          variant="ghost"
+                          justifyContent="flex-start"
+                          leftIcon={<Text fontSize="16px">📝</Text>}
+                          _hover={{ bg: "brand.700", color: "brand.accent" }}
+                          py={3}
+                          fontSize="sm"
+                          fontWeight="medium"
+                          borderRadius="lg"
+                        >
+                          <Text ml={2}>Bài viết của tôi</Text>
+                        </Button>
+
+                        {user?.role === "admin" && (
+                          <>
+                            <Box w="full" h="1px" bg="brand.600" my={2} />
+                            <Button
+                              as={RouterLink}
+                              to="/admin"
+                              w="full"
+                              variant="ghost"
+                              justifyContent="flex-start"
+                              leftIcon={<Text fontSize="16px">🛡️</Text>}
+                              _hover={{ bg: "red.800", color: "red.300" }}
+                              py={3}
+                              fontSize="sm"
+                              fontWeight="medium"
+                              borderRadius="lg"
+                              color="red.400"
+                            >
+                              <Text ml={2}>Admin Panel</Text>
+                            </Button>
+                          </>
+                        )}
+
+                        <Box w="full" h="1px" bg="brand.600" my={2} />
+                        <Button
+                          w="full"
+                          variant="ghost"
+                          justifyContent="flex-start"
+                          leftIcon={<Text fontSize="16px">🚪</Text>}
+                          _hover={{ bg: "red.800", color: "red.200" }}
+                          onClick={handleLogout}
+                          py={3}
+                          fontSize="sm"
+                          fontWeight="medium"
+                          borderRadius="lg"
+                          color="red.300"
+                        >
+                          <Text ml={2}>Đăng Xuất</Text>
+                        </Button>
+                      </VStack>
+                    </Box>
                   )}
-                  <MenuDivider borderColor="brand.700" />
-                  <MenuItem
-                    bg="background.card"
-                    _hover={{ bg: "brand.800", color: "brand.accent" }}
-                    onClick={handleLogout}
-                  >
-                    Đăng Xuất
-                  </MenuItem>
-                </MenuList>
-              </Menu>
+                </Box>
+              </HStack>
             ) : (
               <HStack spacing={{ base: 1, md: 2 }}>
                 <Button

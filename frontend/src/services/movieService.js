@@ -9,10 +9,10 @@ const movieService = {
       return response.data;
     } catch (error) {
       console.error(
-        "Error fetching latest movies:",
-        error.response ? error.response.data : error.message
+        "Lỗi khi lấy phim mới nhất:",
+        error.response?.data || error.message
       );
-      throw error.response ? error.response.data : error;
+      throw error;
     }
   },
 
@@ -22,10 +22,10 @@ const movieService = {
       return response.data;
     } catch (error) {
       console.error(
-        `Error fetching movie details for ${slug}:`,
-        error.response ? error.response.data : error.message
+        "Lỗi khi lấy chi tiết phim:",
+        error.response?.data || error.message
       );
-      throw error.response ? error.response.data : error;
+      throw error;
     }
   },
 
@@ -39,25 +39,23 @@ const movieService = {
       return response.data;
     } catch (error) {
       console.error(
-        `Error searching movies with keyword ${keyword}:`,
-        error.response ? error.response.data : error.message
+        "Lỗi khi tìm kiếm phim:",
+        error.response?.data || error.message
       );
-      throw error.response ? error.response.data : error;
+      throw error;
     }
   },
 
   getSingleMovies: async (page = 1) => {
     try {
       const response = await axios.get(`${API_URL}/movies/single?page=${page}`);
-      // Giả sử backend trả về cấu trúc { items: [], pagination: {} } hoặc tương tự
-      // như getLatestMovies để đồng nhất với frontend hiện tại
       return response.data;
     } catch (error) {
       console.error(
-        "Error fetching single movies:",
-        error.response ? error.response.data : error.message
+        "Lỗi khi lấy phim lẻ:",
+        error.response?.data || error.message
       );
-      throw error.response ? error.response.data : error;
+      throw error;
     }
   },
 
@@ -67,10 +65,10 @@ const movieService = {
       return response.data;
     } catch (error) {
       console.error(
-        "Error fetching series movies:",
-        error.response ? error.response.data : error.message
+        "Lỗi khi lấy phim bộ:",
+        error.response?.data || error.message
       );
-      throw error.response ? error.response.data : error;
+      throw error;
     }
   },
 
@@ -82,10 +80,10 @@ const movieService = {
       return response.data;
     } catch (error) {
       console.error(
-        `Error fetching movies for genre ${genreSlug}:`,
-        error.response ? error.response.data : error.message
+        "Lỗi khi lấy phim theo thể loại:",
+        error.response?.data || error.message
       );
-      throw error.response ? error.response.data : error;
+      throw error;
     }
   },
 };

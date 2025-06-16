@@ -50,28 +50,27 @@ const getOrCreateMovieMetadata = async (movieDataFromApi) => {
   }
 };
 
-// GET /api/movies/latest
-// Lấy danh sách phim mới cập nhật (trang mặc định là 1)
+/**
+ * Lấy danh sách phim mới cập nhật với phân trang
+ * @route GET /api/movies/latest
+ * @param {number} page - Số trang (mặc định = 1)
+ * @returns {Object} Danh sách phim với metadata và thông tin phân trang
+ */
 const getLatestMovies = async (req, res) => {
   const { page = 1 } = req.query;
   try {
+    // Gọi API bên ngoài để lấy danh sách phim mới
     const response = await axios.get(
       `${PHIM_API_DOMAIN}/danh-sach/phim-moi-cap-nhat?page=${page}`
     );
 
-    // Log a toàn bộ data để kiểm tra cấu trúc
-    console.log(
-      "API Response Data for Latest Movies:",
-      JSON.stringify(response.data, null, 2)
-    );
-
-    // Kiểm tra cẩn thận hơn trước khi truy cập
+    // Kiểm tra cấu trúc response từ API
     if (response.data && response.data.status && response.data.items) {
-      // Enrich latest movies with local movie metadata (ratings)
+      // Bổ sung metadata từ database local (ratings, reviews)
       const moviesWithMetadata = await Promise.all(
         response.data.items.map(async (movie) => {
           try {
-            // Try to get metadata from local database
+            // Tìm metadata từ database local
             const movieMetadata = await MovieMetadata.findById(movie._id);
             return {
               ...movie,
@@ -81,7 +80,7 @@ const getLatestMovies = async (req, res) => {
               },
             };
           } catch (err) {
-            // If error, return movie without metadata
+            // Nếu lỗi, trả về movie không có metadata
             return {
               ...movie,
               movieMetadata: {
@@ -93,21 +92,17 @@ const getLatestMovies = async (req, res) => {
         })
       );
 
-      // Giả sử pagination nằm trực tiếp trong data.params nếu params tồn tại
-      // Hoặc API có thể đã thay đổi, pagination nằm ở chỗ khác hoặc có tên khác.
+      // Xử lý thông tin phân trang từ API response
       const paginationData =
         response.data.params?.pagination || response.data.pagination || null;
 
       res.json({
         items: moviesWithMetadata,
-        pagination: paginationData, // Sử dụng paginationData đã kiểm tra
-        appParams: response.data.appParams, // Giữ nguyên nếu appParams vẫn đúng
+        pagination: paginationData,
+        appParams: response.data.appParams,
       });
     } else {
-      console.error(
-        "Unexpected API response structure for latest movies:",
-        response.data
-      );
+      // API response không đúng cấu trúc mong đợi
       res.status(404).json({
         message:
           "Không tìm thấy dữ liệu phim mới cập nhật hoặc cấu trúc API thay đổi.",
@@ -123,29 +118,29 @@ const getLatestMovies = async (req, res) => {
   }
 };
 
-// GET /api/movies/details/:slug
-// Lấy chi tiết một phim bằng slug
+/**
+ * Lấy chi tiết phim theo slug
+ * @route GET /api/movies/details/:slug
+ * @param {string} slug - Slug của phim
+ * @returns {Object} Thông tin chi tiết phim, episodes và metadata
+ */
 const getMovieDetailsBySlug = async (req, res) => {
   const { slug } = req.params;
   try {
+    // Gọi API bên ngoài để lấy chi tiết phim
     const response = await axios.get(`${PHIM_API_DOMAIN}/phim/${slug}`);
-    // Log để kiểm tra
-    // console.log(`API Response Data for Movie Details (${slug}):`, JSON.stringify(response.data, null, 2));
+
     if (response.data && response.data.status && response.data.movie) {
-      // Get or create our local movie metadata
+      // Lấy hoặc tạo metadata từ database local
       const movieMetadata = await getOrCreateMovieMetadata(response.data.movie);
 
       res.json({
         movie: response.data.movie,
         episodes: response.data.episodes,
         appParams: response.data.appParams,
-        movieMetadata: movieMetadata, // Dữ liệu metadata từ DB của chúng ta (bao gồm appRating...)
+        movieMetadata: movieMetadata, // Metadata từ database local (ratings, reviews)
       });
     } else {
-      console.error(
-        `Unexpected API response for movie details ${slug}:`,
-        response.data
-      );
       res.status(404).json({
         message: "Không tìm thấy thông tin phim hoặc cấu trúc API thay đổi.",
       });

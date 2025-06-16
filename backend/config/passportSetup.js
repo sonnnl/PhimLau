@@ -21,56 +21,151 @@ passport.use(
 
       // console.log('Google Profile:', profile);
 
+      // Tạo username từ email nếu có
+      const generateUsernameFromEmail = (email) => {
+        if (!email) return null;
+        return email
+          .split("@")[0]
+          .toLowerCase()
+          .replace(/[^a-zA-Z0-9]/g, "");
+      };
+
+      const email =
+        profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+      const baseUsername =
+        generateUsernameFromEmail(email) || `user_${profile.id}`;
+
       const newUser = {
         googleId: profile.id,
         displayName: profile.displayName,
-        email:
-          profile.emails && profile.emails[0] ? profile.emails[0].value : null, // Lấy email đầu tiên
+        email: email,
         avatarUrl:
-          profile.photos && profile.photos[0] ? profile.photos[0].value : null, // Lấy ảnh đầu tiên
-        // username: có thể tạo từ email hoặc để trống ban đầu nếu không bắt buộc
+          profile.photos && profile.photos[0] ? profile.photos[0].value : null,
+        username: baseUsername,
+        isGoogleAccount: true, // Đánh dấu là Google account
+        isEmailVerified: true, // Google account tự động verify email
       };
 
       try {
         let user = await User.findOne({ googleId: profile.id });
 
         if (user) {
-          // Nếu người dùng đã tồn tại, cập nhật thông tin nếu cần (ví dụ: avatar, displayName)
-          // và gọi done
-          if (
-            user.displayName !== newUser.displayName ||
-            user.avatarUrl !== newUser.avatarUrl
-          ) {
-            user.displayName = newUser.displayName;
-            user.avatarUrl = newUser.avatarUrl;
-            // Cập nhật email nếu nó thay đổi và chưa được sử dụng bởi người dùng khác
-            if (newUser.email && user.email !== newUser.email) {
-              const existingEmail = await User.findOne({
-                email: newUser.email,
-                _id: { $ne: user._id },
-              });
-              if (!existingEmail) {
-                user.email = newUser.email;
-              }
+          // Kiểm tra trạng thái tài khoản trước khi cho phép đăng nhập
+          if (user.status === "suspended") {
+            return done(null, false, {
+              message:
+                "Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ admin.",
+              accountStatus: "suspended",
+            });
+          }
+
+          if (user.status === "banned") {
+            return done(null, false, {
+              message: "Tài khoản của bạn đã bị cấm vĩnh viễn.",
+              accountStatus: "banned",
+            });
+          }
+
+          if (user.status === "inactive") {
+            return done(null, false, {
+              message: "Tài khoản của bạn đã bị vô hiệu hóa.",
+              accountStatus: "inactive",
+            });
+          }
+
+          // Nếu người dùng đã tồn tại và trạng thái active, chỉ cập nhật thông tin nếu user chưa tùy chỉnh
+          let needsUpdate = false;
+
+          // Chỉ cập nhật nếu user chưa tùy chỉnh profile
+          if (!user.hasCustomizedProfile) {
+            // Cập nhật displayName nếu user chưa có hoặc trống
+            if (!user.displayName || user.displayName.trim() === "") {
+              user.displayName = newUser.displayName;
+              needsUpdate = true;
             }
+
+            // Cập nhật avatarUrl nếu user chưa có hoặc là avatar mặc định
+            if (
+              !user.avatarUrl ||
+              user.avatarUrl.includes("pravatar.cc") ||
+              user.avatarUrl.includes("default")
+            ) {
+              user.avatarUrl = newUser.avatarUrl;
+              needsUpdate = true;
+            }
+          }
+
+          // Cập nhật email nếu nó thay đổi và chưa được sử dụng bởi người dùng khác
+          if (newUser.email && user.email !== newUser.email) {
+            const existingEmail = await User.findOne({
+              email: newUser.email,
+              _id: { $ne: user._id },
+            });
+            if (!existingEmail) {
+              user.email = newUser.email;
+              needsUpdate = true;
+            }
+          }
+
+          if (needsUpdate) {
             await user.save();
           }
-          return done(null, user); // Người dùng đã tồn tại
+          return done(null, user); // Người dùng đã tồn tại và active
         } else {
           // Nếu người dùng chưa có googleId, kiểm tra xem email từ Google đã tồn tại chưa
           if (newUser.email) {
             user = await User.findOne({ email: newUser.email });
             if (user) {
-              // Email đã tồn tại, liên kết tài khoản Google này với user đó
+              // Kiểm tra trạng thái tài khoản trước khi liên kết
+              if (user.status === "suspended") {
+                return done(null, false, {
+                  message:
+                    "Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ admin.",
+                  accountStatus: "suspended",
+                });
+              }
+
+              if (user.status === "banned") {
+                return done(null, false, {
+                  message: "Tài khoản của bạn đã bị cấm vĩnh viễn.",
+                  accountStatus: "banned",
+                });
+              }
+
+              if (user.status === "inactive") {
+                return done(null, false, {
+                  message: "Tài khoản của bạn đã bị vô hiệu hóa.",
+                  accountStatus: "inactive",
+                });
+              }
+
+              // Email đã tồn tại và trạng thái active, liên kết tài khoản Google này với user đó
               user.googleId = newUser.googleId;
-              user.displayName = user.displayName || newUser.displayName; // Ưu tiên displayName đã có
-              user.avatarUrl = user.avatarUrl || newUser.avatarUrl; // Ưu tiên avatarUrl đã có
+              user.isGoogleAccount = true;
+              user.isEmailVerified = true;
+
+              // Chỉ cập nhật nếu user chưa tùy chỉnh profile
+              if (!user.hasCustomizedProfile) {
+                user.displayName = user.displayName || newUser.displayName;
+                user.avatarUrl = user.avatarUrl || newUser.avatarUrl;
+              }
+
               await user.save();
               return done(null, user);
             }
           }
 
           // Nếu không tìm thấy user qua googleId hoặc email, tạo user mới
+          // Kiểm tra và tạo username unique
+          let finalUsername = newUser.username;
+          let counter = 1;
+
+          while (await User.findOne({ username: finalUsername })) {
+            finalUsername = `${newUser.username}${counter}`;
+            counter++;
+          }
+
+          newUser.username = finalUsername;
           user = await User.create(newUser);
           return done(null, user); // Tạo người dùng mới thành công
         }

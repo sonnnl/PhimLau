@@ -75,27 +75,6 @@ const setupSocket = (server) => {
       });
     });
 
-    // Handle admin sending real-time test notification
-    socket.on("admin_test_notification", (data) => {
-      if (socket.user.role === "admin") {
-        console.log(`📢 Admin test notification from ${socket.user.username}`);
-
-        // Send test notification to all users
-        io.emit("notification", {
-          id: `test_${Date.now()}`,
-          title: "🧪 Test Notification",
-          message: data.message || "This is a test notification from admin",
-          type: "info",
-          metadata: {
-            icon: "🧪",
-            color: "blue",
-          },
-          createdAt: new Date(),
-          isTest: true,
-        });
-      }
-    });
-
     // Handle typing indicators for forum/chat
     socket.on("typing_start", (data) => {
       socket.to(data.room || "general").emit("user_typing", {

@@ -14,11 +14,16 @@ import {
   useToast,
   InputGroup,
   InputLeftElement,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
+  CloseButton,
 } from "@chakra-ui/react";
 import { FaGoogle } from "react-icons/fa";
 import { EmailIcon, LockIcon } from "@chakra-ui/icons";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { useState, useContext } from "react";
+import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom";
+import { useState, useContext, useEffect } from "react";
 import { AuthContext } from "../contexts/AuthContext";
 import axios from "axios";
 
@@ -31,9 +36,63 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [verificationInfo, setVerificationInfo] = useState(null);
+  const [showAlert, setShowAlert] = useState(true);
+  const [hasShownToast, setHasShownToast] = useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
+
+  useEffect(() => {
+    // Kiểm tra xem có thông điệp từ registration không
+    if (location.state?.message) {
+      if (location.state.needsVerification) {
+        setVerificationInfo({
+          email: location.state.email,
+          message: location.state.message,
+          showResendOption: location.state.showResendOption,
+        });
+      }
+
+      // Xóa state để tránh hiển thị lại khi refresh
+      navigate("/login", { replace: true });
+    }
+
+    // Kiểm tra error từ Google OAuth redirect
+    const urlParams = new URLSearchParams(location.search);
+    const error = urlParams.get("error");
+    const message = urlParams.get("message");
+
+    if (error) {
+      let toastStatus = "error";
+      let toastTitle = "Lỗi Đăng Nhập Google";
+
+      if (error === "account_suspended") {
+        toastStatus = "warning";
+        toastTitle = "⚠️ Tài khoản bị tạm khóa";
+      } else if (error === "account_banned") {
+        toastStatus = "error";
+        toastTitle = "🚫 Tài khoản bị cấm";
+      } else if (error === "account_inactive") {
+        toastStatus = "info";
+        toastTitle = "ℹ️ Tài khoản không hoạt động";
+      }
+
+      toast({
+        title: toastTitle,
+        description: message
+          ? decodeURIComponent(message)
+          : "Đăng nhập Google thất bại",
+        status: toastStatus,
+        duration: 8000,
+        isClosable: true,
+      });
+
+      // Xóa error khỏi URL
+      navigate("/login", { replace: true });
+    }
+  }, [location.state, location.search, navigate, toast]);
 
   const handleGoogleLogin = () => {
     setIsGoogleLoading(true);
@@ -61,14 +120,50 @@ export default function LoginPage() {
         err.response && err.response.data && err.response.data.message
           ? err.response.data.message
           : "Đăng nhập thất bại. Vui lòng thử lại.";
-      toast({
-        title: "Lỗi Đăng Nhập",
-        description: errorMessage,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
+
+      const accountStatus = err.response?.data?.accountStatus;
+
+      // Kiểm tra xem có phải lỗi verification không
+      if (err.response?.data?.needsVerification) {
+        setVerificationInfo({
+          email: err.response.data.email,
+          message: errorMessage,
+          showResendOption: true,
+        });
+        setShowAlert(true); // Đảm bảo alert được hiển thị
+      } else {
+        // Xử lý các trạng thái tài khoản bị khóa
+        let toastStatus = "error";
+        let toastTitle = "Lỗi Đăng Nhập";
+
+        if (accountStatus === "suspended") {
+          toastStatus = "warning";
+          toastTitle = "⚠️ Tài khoản bị tạm khóa";
+        } else if (accountStatus === "banned") {
+          toastStatus = "error";
+          toastTitle = "🚫 Tài khoản bị cấm";
+        } else if (accountStatus === "inactive") {
+          toastStatus = "info";
+          toastTitle = "ℹ️ Tài khoản không hoạt động";
+        }
+
+        toast({
+          title: toastTitle,
+          description: errorMessage,
+          status: toastStatus,
+          duration: accountStatus ? 8000 : 5000, // Hiển thị lâu hơn cho các lỗi tài khoản
+          isClosable: true,
+        });
+      }
+    }
+    setIsLoading(false);
+  };
+
+  const handleResendVerification = () => {
+    if (verificationInfo?.email) {
+      navigate("/resend-verification", {
+        state: { email: verificationInfo.email },
       });
-      setIsLoading(false);
     }
   };
 
@@ -94,6 +189,38 @@ export default function LoginPage() {
         <Heading as="h1" size="lg" color="text.primary" mb={2}>
           Đăng Nhập
         </Heading>
+
+        {/* Alert cho verification */}
+        {verificationInfo && showAlert && (
+          <Alert status="success" borderRadius="md" mb={4}>
+            <AlertIcon />
+            <Box flex="1">
+              <AlertTitle fontSize="sm">Đăng ký thành công!</AlertTitle>
+              <AlertDescription fontSize="xs">
+                {verificationInfo.message}
+                {verificationInfo.showResendOption && (
+                  <>
+                    <br />
+                    <ChakraLink
+                      color="blue.500"
+                      textDecoration="underline"
+                      fontSize="xs"
+                      onClick={handleResendVerification}
+                      cursor="pointer"
+                      mt={1}
+                    >
+                      Gửi lại email xác nhận
+                    </ChakraLink>
+                  </>
+                )}
+              </AlertDescription>
+            </Box>
+            <CloseButton
+              alignSelf="flex-start"
+              onClick={() => setShowAlert(false)}
+            />
+          </Alert>
+        )}
         <Button
           leftIcon={<Icon as={FaGoogle} />}
           variant="google"
@@ -155,6 +282,18 @@ export default function LoginPage() {
             >
               Đăng nhập
             </Button>
+
+            <Text color="text.secondary" fontSize="sm" textAlign="center">
+              <ChakraLink
+                as={RouterLink}
+                to="/forgot-password"
+                color="brand.accent"
+                fontWeight="medium"
+                _hover={{ textDecoration: "underline" }}
+              >
+                Quên mật khẩu?
+              </ChakraLink>
+            </Text>
           </VStack>
         </form>
 

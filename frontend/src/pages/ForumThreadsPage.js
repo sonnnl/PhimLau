@@ -32,8 +32,26 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   SimpleGrid,
+  Badge,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  IconButton,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+  useToast,
 } from "@chakra-ui/react";
-import { fetchForumThreadsWithFilters } from "../services/forumService";
+import {
+  fetchForumThreadsWithFilters,
+  deleteThread as deleteThreadService,
+} from "../services/forumService";
 import {
   FiMessageSquare,
   FiEye,
@@ -41,6 +59,10 @@ import {
   FiChevronRight,
   FiHome,
   FiPlusCircle,
+  FiHeart,
+  FiBookmark,
+  FiMoreVertical,
+  FiTrash2,
 } from "react-icons/fi";
 import { useAuth } from "../contexts/AuthContext"; // Để kiểm tra đăng nhập cho nút Tạo chủ đề
 
@@ -60,6 +82,30 @@ const formatDate = (dateString) => {
     return dateString; // fallback
   }
 };
+
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, isLoading }) => (
+  <Modal isOpen={isOpen} onClose={onClose} isCentered>
+    <ModalOverlay />
+    <ModalContent bg="background.card">
+      <ModalHeader>Xác nhận xóa</ModalHeader>
+      <ModalCloseButton />
+      <ModalBody>
+        <Text>
+          Bạn có chắc chắn muốn xóa chủ đề này không? Hành động này không thể
+          hoàn tác.
+        </Text>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="ghost" mr={3} onClick={onClose}>
+          Hủy
+        </Button>
+        <Button colorScheme="red" onClick={onConfirm} isLoading={isLoading}>
+          Xóa
+        </Button>
+      </ModalFooter>
+    </ModalContent>
+  </Modal>
+);
 
 const Pagination = ({
   currentPage,
@@ -117,7 +163,8 @@ const ForumThreadsPage = () => {
   const { categorySlug } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const toast = useToast();
 
   const queryParams = new URLSearchParams(location.search);
   const initialPage = parseInt(queryParams.get("page"), 10) || 1;
@@ -130,6 +177,14 @@ const ForumThreadsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(initialPage);
+
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onClose: onDeleteClose,
+  } = useDisclosure();
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const limit = 15; // Số thread mỗi trang, có thể đặt trong config
 
@@ -155,8 +210,8 @@ const ForumThreadsPage = () => {
       }
       setLoading(false);
     },
-    [categorySlug, navigate, location.pathname, currentPage]
-  ); // Thêm currentPage vào dependencies
+    [categorySlug, navigate, location.pathname, limit]
+  );
 
   useEffect(() => {
     fetchThreadsData(initialPage);
@@ -165,6 +220,36 @@ const ForumThreadsPage = () => {
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= (threadsData.pagination?.totalPages || 1)) {
       fetchThreadsData(newPage);
+    }
+  };
+
+  const handleDeleteRequest = (threadId) => {
+    setDeleteTarget(threadId);
+    onDeleteOpen();
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteThreadService(deleteTarget);
+      toast({
+        title: "Thành công",
+        description: "Chủ đề đã được xóa.",
+        status: "success",
+        duration: 3000,
+      });
+      fetchThreadsData(currentPage); // Refetch the list
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể xóa chủ đề.",
+        status: "error",
+        duration: 3000,
+      });
+    } finally {
+      setIsDeleting(false);
+      onDeleteClose();
     }
   };
 
@@ -177,19 +262,38 @@ const ForumThreadsPage = () => {
         alignItems="center"
         height="70vh"
       >
-        <Spinner size="xl" />
+        <VStack spacing={4}>
+          <Spinner size="xl" />
+          <Text color="gray.500">Đang tải danh sách chủ đề...</Text>
+        </VStack>
       </Box>
     );
   }
 
   if (error) {
     return (
-      <Alert status="error" mt={4} mx={5}>
+      <Alert status="error" mt={4} mx={5} borderRadius="md">
         <AlertIcon />
-        <Text>{error}</Text>
-        <Button ml={4} onClick={() => fetchThreadsData(currentPage)} size="sm">
-          Thử lại
-        </Button>
+        <VStack align="start" spacing={2} flex="1">
+          <Text fontWeight="semibold">Có lỗi xảy ra</Text>
+          <Text fontSize="sm">{error}</Text>
+          <HStack spacing={2}>
+            <Button
+              onClick={() => fetchThreadsData(currentPage)}
+              size="sm"
+              variant="outline"
+            >
+              Thử lại
+            </Button>
+            <Button
+              onClick={() => window.location.reload()}
+              size="sm"
+              variant="ghost"
+            >
+              Tải lại trang
+            </Button>
+          </HStack>
+        </VStack>
       </Alert>
     );
   }
@@ -263,9 +367,19 @@ const ForumThreadsPage = () => {
               p={4}
               borderWidth="1px"
               borderRadius="md"
-              borderColor="gray.700"
-              bg="background.secondaryAlt" // Màu nền khác biệt cho từng thread item
-              _hover={{ borderColor: "orange.400", shadow: "md" }}
+              borderColor={thread.isPinned ? "purple.400" : "gray.700"}
+              bg={thread.isPinned ? "purple.900" : "background.secondaryAlt"}
+              _hover={{
+                borderColor: thread.isPinned ? "purple.300" : "orange.400",
+                shadow: "md",
+              }}
+              position="relative"
+              // ✨ PINNED THREAD STYLING
+              {...(thread.isPinned && {
+                borderLeftWidth: "4px",
+                borderLeftColor: "purple.400",
+                shadow: "lg",
+              })}
             >
               <Flex
                 direction={{ base: "column", md: "row" }}
@@ -273,13 +387,62 @@ const ForumThreadsPage = () => {
               >
                 <Box flex={1} mr={{ base: 0, md: 4 }} mb={{ base: 3, md: 0 }}>
                   <Heading as="h3" size="md" mb={1}>
-                    <Link
-                      as={RouterLink}
-                      to={`/forum/thread/${thread.slug}`}
-                      _hover={{ color: "orange.400" }}
-                    >
-                      {thread.title}
-                    </Link>
+                    <HStack spacing={2} align="center">
+                      {/* ✨ PINNED ICON */}
+                      {thread.isPinned && (
+                        <Tooltip label="Bài viết được ghim" placement="top">
+                          <Icon
+                            as={FiBookmark}
+                            color="purple.400"
+                            boxSize={4}
+                            transform="rotate(15deg)"
+                          />
+                        </Tooltip>
+                      )}
+                      <Link
+                        as={RouterLink}
+                        to={`/forum/thread/${thread.slug}`}
+                        _hover={{
+                          color: thread.isPinned ? "purple.300" : "orange.400",
+                        }}
+                        flex={1}
+                        color={thread.isPinned ? "purple.200" : "inherit"}
+                        fontWeight={thread.isPinned ? "bold" : "normal"}
+                      >
+                        {thread.title}
+                      </Link>
+                      {/* ✨ PINNED BADGE */}
+                      {thread.isPinned && (
+                        <Badge
+                          colorScheme="purple"
+                          size="sm"
+                          variant="solid"
+                          fontWeight="bold"
+                          px={2}
+                        >
+                          📌 GHIM
+                        </Badge>
+                      )}
+                      {thread.movieMetadata &&
+                        thread.movieMetadata.length > 0 && (
+                          <Tooltip
+                            label={`Thảo luận về ${
+                              thread.movieMetadata.length
+                            } phim: ${thread.movieMetadata
+                              .map((m) => m.movieTitle)
+                              .join(", ")}`}
+                            placement="top"
+                          >
+                            <Badge
+                              colorScheme="orange"
+                              size="sm"
+                              variant="subtle"
+                            >
+                              🎬 {thread.movieMetadata.length}
+                            </Badge>
+                          </Tooltip>
+                        )}
+                    </HStack>
                   </Heading>
                   <HStack spacing={2} fontSize="sm" color="gray.400">
                     <Avatar
@@ -293,38 +456,69 @@ const ForumThreadsPage = () => {
                     <Text>• {formatDate(thread.createdAt)}</Text>
                   </HStack>
                 </Box>
-                <SimpleGrid
-                  columns={{ base: 2, sm: 3 }}
-                  spacingX={4}
-                  spacingY={2}
-                  minW={{ md: "220px" }}
-                  textAlign={{ base: "left", md: "right" }}
-                  fontSize="sm"
-                >
-                  <Tooltip label="Lượt trả lời" placement="top">
-                    <HStack justify={{ base: "flex-start", md: "flex-end" }}>
-                      <Icon as={FiMessageSquare} color="gray.500" />
-                      <Text>{thread.replyCount || 0}</Text>
-                    </HStack>
-                  </Tooltip>
-                  <Tooltip label="Lượt xem" placement="top">
-                    <HStack justify={{ base: "flex-start", md: "flex-end" }}>
-                      <Icon as={FiEye} color="gray.500" />
-                      <Text>{thread.views || 0}</Text>
-                    </HStack>
-                  </Tooltip>
-                  <Tooltip label="Hoạt động cuối" placement="top">
-                    <HStack
-                      justify={{ base: "flex-start", md: "flex-end" }}
-                      gridColumn={{ base: "span 2", sm: "span 1" }}
-                    >
-                      <Icon as={FiClock} color="gray.500" />
-                      <Text noOfLines={1}>
-                        {formatDate(thread.lastReplyTime)}
-                      </Text>
-                    </HStack>
-                  </Tooltip>
-                </SimpleGrid>
+                <Flex align="center">
+                  <SimpleGrid
+                    columns={{ base: 2, sm: 4 }}
+                    spacingX={4}
+                    spacingY={2}
+                    minW={{ md: "280px" }}
+                    textAlign={{ base: "left", md: "right" }}
+                    fontSize="sm"
+                  >
+                    <Tooltip label="Lượt trả lời" placement="top">
+                      <HStack justify={{ base: "flex-start", md: "flex-end" }}>
+                        <Icon as={FiMessageSquare} color="gray.500" />
+                        <Text>{thread.replyCount || 0}</Text>
+                      </HStack>
+                    </Tooltip>
+                    <Tooltip label="Lượt thích" placement="top">
+                      <HStack justify={{ base: "flex-start", md: "flex-end" }}>
+                        <Icon as={FiHeart} color="red.400" />
+                        <Text>{thread.likeCount || 0}</Text>
+                      </HStack>
+                    </Tooltip>
+                    <Tooltip label="Lượt xem" placement="top">
+                      <HStack justify={{ base: "flex-start", md: "flex-end" }}>
+                        <Icon as={FiEye} color="gray.500" />
+                        <Text>{thread.views || 0}</Text>
+                      </HStack>
+                    </Tooltip>
+                    <Tooltip label="Hoạt động cuối" placement="top">
+                      <HStack
+                        justify={{ base: "flex-start", md: "flex-end" }}
+                        gridColumn={{ base: "span 2", sm: "span 1" }}
+                      >
+                        <Icon as={FiClock} color="gray.500" />
+                        <Text noOfLines={1}>
+                          {formatDate(thread.lastReplyTime)}
+                        </Text>
+                      </HStack>
+                    </Tooltip>
+                  </SimpleGrid>
+
+                  {user &&
+                    (user.role === "admin" ||
+                      user._id === thread.author?._id) && (
+                      <Menu>
+                        <MenuButton
+                          as={IconButton}
+                          icon={<FiMoreVertical />}
+                          variant="ghost"
+                          size="sm"
+                          ml={4}
+                        />
+                        <MenuList bg="background.card" borderColor="gray.600">
+                          <MenuItem
+                            icon={<FiTrash2 />}
+                            onClick={() => handleDeleteRequest(thread._id)}
+                            color="red.400"
+                          >
+                            Xóa chủ đề
+                          </MenuItem>
+                        </MenuList>
+                      </Menu>
+                    )}
+                </Flex>
               </Flex>
               {thread.lastReplyAuthor && (
                 <HStack
@@ -358,6 +552,12 @@ const ForumThreadsPage = () => {
           totalItems={pagination.totalItems}
         />
       )}
+      <DeleteConfirmationModal
+        isOpen={isDeleteOpen}
+        onClose={onDeleteClose}
+        onConfirm={confirmDelete}
+        isLoading={isDeleting}
+      />
     </Box>
   );
 };

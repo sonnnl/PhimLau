@@ -130,13 +130,13 @@ export const useForumThreads = (categorySlug, initialPage = 1) => {
 export const useForumThreadDetail = (threadSlug, initialReplyPage = 1) => {
   const [threadData, setThreadData] = useState({
     thread: null,
-    replies: { items: [], pagination: {} },
+    replies: { data: [], pagination: {} },
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentReplyPage, setCurrentReplyPage] = useState(initialReplyPage);
 
-  const REPLIES_PER_PAGE = 10;
+  const REPLIES_PER_PAGE = 20;
 
   const fetchThreadData = useCallback(
     async (replyPageToFetch) => {
@@ -147,8 +147,8 @@ export const useForumThreadDetail = (threadSlug, initialReplyPage = 1) => {
         setError(null);
 
         const data = await getThreadBySlug(threadSlug, {
-          replyPage: replyPageToFetch,
-          replyLimit: REPLIES_PER_PAGE,
+          page: replyPageToFetch,
+          limit: REPLIES_PER_PAGE,
         });
 
         setThreadData(data);

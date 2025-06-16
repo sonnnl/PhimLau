@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import AdminLayout from "../components/AdminLayout";
 import {
   Box,
   Card,
@@ -35,6 +36,24 @@ import {
   StatHelpText,
   Icon,
   useColorModeValue,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  useDisclosure,
+  Checkbox,
+  CheckboxGroup,
+  Stack,
+  IconButton,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay,
 } from "@chakra-ui/react";
 import {
   FiBell,
@@ -43,142 +62,226 @@ import {
   FiCheck,
   FiClock,
   FiActivity,
+  FiBarChart3,
+  FiTrash2,
+  FiEye,
+  FiRefreshCw,
 } from "react-icons/fi";
+import axios from "axios";
+import Pagination from "../../components/common/Pagination";
 
 const AdminNotifications = () => {
-  const [formData, setFormData] = useState({
+  const [notifications, setNotifications] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filters, setFilters] = useState({
+    type: "",
+    isRead: "",
+  });
+
+  // Send notification form
+  const [sendForm, setSendForm] = useState({
+    recipients: "all",
+    selectedUsers: [],
+    type: "admin_message",
     title: "",
     message: "",
-    type: "info",
-    sendType: "all",
-    targetRole: "user",
-    expiresAt: "",
-    icon: "🔔",
-    color: "blue",
     actionUrl: "",
-    actionText: "",
+    priority: "normal",
+    expiresAt: "",
   });
-  const [loading, setLoading] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [stats, setStats] = useState({});
+
+  // User selection states
+  const [userSearch, setUserSearch] = useState("");
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [userPage, setUserPage] = useState(1);
+  const [userTotalPages, setUserTotalPages] = useState(1);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
   const toast = useToast();
-  const cardBg = useColorModeValue("white", "gray.800");
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onClose: onDeleteClose,
+  } = useDisclosure();
+  const [deleteId, setDeleteId] = useState(null);
+  const cancelRef = React.useRef();
 
-  useEffect(() => {
-    fetchNotifications();
-    fetchStats();
-  }, []);
+  const bgColor = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.600");
 
-  const fetchNotifications = async () => {
+  // API calls
+  const apiClient = axios.create({
+    baseURL: process.env.REACT_APP_API_URL || "http://localhost:5001/api",
+    withCredentials: true,
+  });
+
+  // Add auth token to requests
+  apiClient.interceptors.request.use((config) => {
+    const token = localStorage.getItem("movieAppToken");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
+  const fetchNotifications = async (page = 1) => {
     try {
-      const token = localStorage.getItem("movieAppToken");
-      const response = await fetch("/api/admin/notifications", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "20",
+        ...filters,
       });
-      const data = await response.json();
-      if (data.success) {
-        setNotifications(data.data.notifications);
+
+      const response = await apiClient.get(
+        `/admin/notifications?${params.toString()}`
+      );
+
+      if (response.data.success) {
+        setNotifications(response.data.data || []);
+        setCurrentPage(response.data.pagination?.currentPage || 1);
+        setTotalPages(response.data.pagination?.totalPages || 1);
       }
     } catch (error) {
       console.error("Error fetching notifications:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách thông báo",
+        status: "error",
+        duration: 3000,
+      });
+      // Set empty array để tránh lỗi map
+      setNotifications([]);
+      setCurrentPage(1);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUsers = async (page = 1, search = "") => {
+    try {
+      setLoadingUsers(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "10",
+        search: search,
+      });
+
+      const response = await apiClient.get(
+        `/admin/notifications/users?${params.toString()}`
+      );
+
+      if (response.data.success) {
+        setUsers(response.data.data);
+        setFilteredUsers(response.data.data);
+        setUserPage(response.data.pagination?.currentPage || 1);
+        setUserTotalPages(response.data.pagination?.totalPages || 1);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách người dùng",
+        status: "error",
+        duration: 3000,
+      });
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem("movieAppToken");
-      const response = await fetch("/api/admin/notifications/stats", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setStats(data.data);
+      const response = await apiClient.get("/admin/notifications/stats");
+      if (response.data.success) {
+        setStats(response.data.data);
       }
     } catch (error) {
       console.error("Error fetching stats:", error);
-    }
-  };
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!formData.title || !formData.message) {
-      toast({
-        title: "❌ Lỗi",
-        description: "Vui lòng điền tiêu đề và nội dung",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const token = localStorage.getItem("movieAppToken");
-
-      const response = await fetch("/api/admin/notifications/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      // Set default stats nếu API lỗi
+      setStats({
+        overview: {
+          totalNotifications: 0,
+          totalUnread: 0,
+          totalUsers: 0,
+          readRate: 0,
         },
-        body: JSON.stringify({
-          ...formData,
-          metadata: {
-            icon: formData.icon,
-            color: formData.color,
-            actionUrl: formData.actionUrl,
-            actionText: formData.actionText,
-          },
-        }),
+        byType: [],
+        recentActivity: [],
+        recent: 0,
       });
+    }
+  };
 
-      const data = await response.json();
-
-      if (data.success) {
+  const sendNotification = async () => {
+    try {
+      if (!sendForm.title || !sendForm.message) {
         toast({
-          title: "🎉 Thành công!",
-          description: data.message,
-          status: "success",
+          title: "❌ Lỗi",
+          description: "Vui lòng nhập tiêu đề và nội dung",
+          status: "error",
           duration: 3000,
+        });
+        return;
+      }
+
+      setLoading(true);
+
+      const payload = {
+        ...sendForm,
+        recipients:
+          sendForm.recipients === "selected"
+            ? sendForm.selectedUsers
+            : sendForm.recipients,
+      };
+
+      const response = await apiClient.post(
+        "/admin/notifications/send",
+        payload
+      );
+
+      if (response.data.success) {
+        // Show success message with details
+        toast({
+          title: "✅ Thành công!",
+          description: `${response.data.message}. Đang làm mới dữ liệu...`,
+          status: "success",
+          duration: 5000,
           isClosable: true,
         });
 
-        // Reset form
-        setFormData({
-          title: "",
-          message: "",
-          type: "info",
-          sendType: "all",
-          targetRole: "user",
-          expiresAt: "",
-          icon: "🔔",
-          color: "blue",
-          actionUrl: "",
-          actionText: "",
-        });
+        // Fetch updated data first
+        await Promise.all([fetchNotifications(), fetchStats()]);
 
-        fetchNotifications();
-        fetchStats();
-      } else {
-        throw new Error(data.message);
+        // Reset form sau khi load xong data với delay
+        setTimeout(() => {
+          setSendForm({
+            recipients: "all",
+            selectedUsers: [],
+            type: "admin_message",
+            title: "",
+            message: "",
+            actionUrl: "",
+            priority: "normal",
+            expiresAt: "",
+          });
+
+          // Close modal sau khi reset form
+          setTimeout(() => {
+            onClose();
+          }, 500);
+        }, 1000);
       }
     } catch (error) {
       toast({
         title: "❌ Lỗi",
-        description: error.message,
+        description: error.response?.data?.message || "Không thể gửi thông báo",
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -188,66 +291,103 @@ const AdminNotifications = () => {
     }
   };
 
-  const sendTestNotification = () => {
-    // Emit test notification via Socket.IO if connected
-    if (window.socket) {
-      window.socket.emit("admin_test_notification", {
-        message: "Test notification từ admin panel!",
-      });
+  const deleteNotification = async (id) => {
+    try {
+      setLoading(true);
+      const response = await apiClient.delete(`/admin/notifications/${id}`);
 
+      if (response.data.success) {
+        toast({
+          title: "Thành công",
+          description: "Đã xóa thông báo",
+          status: "success",
+          duration: 3000,
+        });
+
+        fetchNotifications();
+        fetchStats();
+      }
+    } catch (error) {
       toast({
-        title: "🧪 Test sent",
-        description: "Đã gửi test notification",
-        status: "info",
-        duration: 2000,
-        isClosable: true,
-      });
-    } else {
-      toast({
-        title: "❌ Socket.IO chưa kết nối",
-        description: "Không thể gửi test notification",
+        title: "Lỗi",
+        description: "Không thể xóa thông báo",
         status: "error",
         duration: 3000,
-        isClosable: true,
       });
+    } finally {
+      setLoading(false);
+      onDeleteClose();
     }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString("vi-VN");
   };
 
   const getTypeColor = (type) => {
     const colors = {
-      info: "blue",
-      success: "green",
-      warning: "orange",
-      error: "red",
-      announcement: "purple",
+      thread_reply: "blue",
+      thread_like: "green",
+      reply_like: "green",
+      admin_message: "purple",
+      system: "orange",
+      moderation: "red",
+      moderation_warning: "orange",
+      account_suspended: "red",
+      account_banned: "red",
+      content_removed: "red",
+      content_edited: "yellow",
     };
     return colors[type] || "gray";
   };
 
-  return (
-    <Box p={6} maxW="1400px" mx="auto">
-      <VStack spacing={6} align="stretch">
-        {/* Header */}
-        <Box>
-          <Heading size="xl" color="brand.accent" mb={2}>
-            📢 Quản lý Thông báo
-          </Heading>
-          <Text color="gray.500">Gửi thông báo real-time cho users</Text>
-        </Box>
+  const getTypeLabel = (type) => {
+    const labels = {
+      thread_reply: "Trả lời",
+      thread_like: "Thích chủ đề",
+      reply_like: "Thích phản hồi",
+      admin_message: "Thông báo admin",
+      system: "Hệ thống",
+      moderation: "Kiểm duyệt",
+      moderation_warning: "Cảnh báo",
+      account_suspended: "Tạm khóa",
+      account_banned: "Cấm vĩnh viễn",
+      content_removed: "Xóa nội dung",
+      content_edited: "Chỉnh sửa",
+    };
+    return labels[type] || type;
+  };
 
+  useEffect(() => {
+    fetchNotifications();
+    fetchUsers();
+    fetchStats();
+  }, [filters]);
+
+  // Search users with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (sendForm.recipients === "selected") {
+        fetchUsers(1, userSearch);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [userSearch, sendForm.recipients]);
+
+  return (
+    <AdminLayout
+      title="📢 Quản lý Thông báo"
+      description="Gửi thông báo real-time cho users"
+    >
+      <VStack spacing={6} align="stretch">
         {/* Stats */}
         <SimpleGrid columns={{ base: 1, md: 4 }} spacing={6}>
-          <Card bg={cardBg}>
+          <Card bg={bgColor}>
             <CardBody>
               <Stat>
                 <HStack justify="space-between">
                   <Box>
                     <StatLabel>Tổng thông báo</StatLabel>
-                    <StatNumber color="blue.500">{stats.total || 0}</StatNumber>
+                    <StatNumber color="blue.500">
+                      {stats?.overview?.totalNotifications || 0}
+                    </StatNumber>
                     <StatHelpText>Tất cả</StatHelpText>
                   </Box>
                   <Icon as={FiBell} boxSize="30px" color="blue.400" />
@@ -256,14 +396,14 @@ const AdminNotifications = () => {
             </CardBody>
           </Card>
 
-          <Card bg={cardBg}>
+          <Card bg={bgColor}>
             <CardBody>
               <Stat>
                 <HStack justify="space-between">
                   <Box>
                     <StatLabel>Đang hoạt động</StatLabel>
                     <StatNumber color="green.500">
-                      {stats.active || 0}
+                      {stats?.overview?.totalUsers || 0}
                     </StatNumber>
                     <StatHelpText>Active</StatHelpText>
                   </Box>
@@ -273,14 +413,14 @@ const AdminNotifications = () => {
             </CardBody>
           </Card>
 
-          <Card bg={cardBg}>
+          <Card bg={bgColor}>
             <CardBody>
               <Stat>
                 <HStack justify="space-between">
                   <Box>
                     <StatLabel>Tuần này</StatLabel>
                     <StatNumber color="orange.500">
-                      {stats.recent || 0}
+                      {stats?.recent || 0}
                     </StatNumber>
                     <StatHelpText>7 ngày qua</StatHelpText>
                   </Box>
@@ -290,13 +430,15 @@ const AdminNotifications = () => {
             </CardBody>
           </Card>
 
-          <Card bg={cardBg}>
+          <Card bg={bgColor}>
             <CardBody>
               <Stat>
                 <HStack justify="space-between">
                   <Box>
                     <StatLabel>Users online</StatLabel>
-                    <StatNumber color="purple.500">5</StatNumber>
+                    <StatNumber color="purple.500">
+                      {stats?.overview?.totalUsers || 0}
+                    </StatNumber>
                     <StatHelpText>Hiện tại</StatHelpText>
                   </Box>
                   <Icon as={FiUsers} boxSize="30px" color="purple.400" />
@@ -311,129 +453,355 @@ const AdminNotifications = () => {
           <TabList>
             <Tab>📝 Gửi thông báo</Tab>
             <Tab>📋 Lịch sử</Tab>
-            <Tab>🧪 Test</Tab>
           </TabList>
 
           <TabPanels>
             {/* Send Notification Tab */}
             <TabPanel p={0} pt={6}>
-              <Card bg={cardBg}>
+              <Card bg={bgColor}>
                 <CardHeader>
-                  <Heading size="md">Gửi thông báo mới</Heading>
+                  <HStack justify="space-between" align="center">
+                    <Heading size="md">📬 Gửi thông báo mới</Heading>
+                    {(sendForm.title || sendForm.message) && (
+                      <Badge colorScheme="blue" variant="subtle">
+                        Đang soạn thảo...
+                      </Badge>
+                    )}
+                  </HStack>
                 </CardHeader>
                 <CardBody>
-                  <form onSubmit={handleSubmit}>
+                  <form onSubmit={sendNotification}>
                     <VStack spacing={4}>
                       <HStack spacing={4} w="full">
                         <FormControl isRequired>
-                          <FormLabel>Tiêu đề</FormLabel>
-                          <Input
-                            name="title"
-                            value={formData.title}
-                            onChange={handleChange}
-                            placeholder="Tiêu đề thông báo"
-                          />
-                        </FormControl>
-
-                        <FormControl>
-                          <FormLabel>Icon</FormLabel>
-                          <Input
-                            name="icon"
-                            value={formData.icon}
-                            onChange={handleChange}
-                            placeholder="🔔"
-                            maxW="100px"
-                          />
-                        </FormControl>
-                      </HStack>
-
-                      <FormControl isRequired>
-                        <FormLabel>Nội dung</FormLabel>
-                        <Textarea
-                          name="message"
-                          value={formData.message}
-                          onChange={handleChange}
-                          placeholder="Nội dung thông báo..."
-                          rows={4}
-                        />
-                      </FormControl>
-
-                      <HStack spacing={4} w="full">
-                        <FormControl>
-                          <FormLabel>Loại</FormLabel>
+                          <FormLabel>Người nhận</FormLabel>
                           <Select
-                            name="type"
-                            value={formData.type}
-                            onChange={handleChange}
+                            value={sendForm.recipients}
+                            onChange={(e) => {
+                              setSendForm({
+                                ...sendForm,
+                                recipients: e.target.value,
+                                selectedUsers: [], // Reset khi chuyển mode
+                              });
+                              setUserSearch(""); // Reset search
+
+                              // Load users khi chọn "selected" mode
+                              if (e.target.value === "selected") {
+                                fetchUsers(1, "");
+                              }
+                            }}
                           >
-                            <option value="info">Thông tin</option>
-                            <option value="success">Thành công</option>
-                            <option value="warning">Cảnh báo</option>
-                            <option value="error">Lỗi</option>
-                            <option value="announcement">
-                              Thông báo quan trọng
+                            <option value="all">Tất cả người dùng</option>
+                            <option value="selected">
+                              Chọn người dùng cụ thể
                             </option>
                           </Select>
                         </FormControl>
 
-                        <FormControl>
-                          <FormLabel>Gửi đến</FormLabel>
-                          <Select
-                            name="sendType"
-                            value={formData.sendType}
-                            onChange={handleChange}
-                          >
-                            <option value="all">Tất cả users</option>
-                            <option value="role">Theo role</option>
-                          </Select>
-                        </FormControl>
-
-                        {formData.sendType === "role" && (
+                        {sendForm.recipients === "selected" && (
                           <FormControl>
-                            <FormLabel>Role</FormLabel>
-                            <Select
-                              name="targetRole"
-                              value={formData.targetRole}
-                              onChange={handleChange}
+                            <FormLabel>
+                              <HStack justify="space-between">
+                                <Text>Chọn người dùng</Text>
+                                <Badge colorScheme="blue" variant="outline">
+                                  {sendForm.selectedUsers.length} đã chọn
+                                </Badge>
+                              </HStack>
+                            </FormLabel>
+
+                            {/* Search Input */}
+                            <Input
+                              placeholder="🔍 Tìm kiếm theo tên hoặc email..."
+                              value={userSearch}
+                              onChange={(e) => setUserSearch(e.target.value)}
+                              mb={3}
+                              focusBorderColor="blue.400"
+                            />
+
+                            {/* User List */}
+                            <Box
+                              border="1px"
+                              borderColor={borderColor}
+                              rounded="lg"
+                              overflow="hidden"
                             >
-                              <option value="user">User</option>
-                              <option value="admin">Admin</option>
-                            </Select>
+                              {/* Header với Select All */}
+                              <Box
+                                bg="gray.50"
+                                px={3}
+                                py={2}
+                                borderBottom="1px"
+                                borderColor={borderColor}
+                              >
+                                <HStack justify="space-between">
+                                  <Checkbox
+                                    isChecked={
+                                      filteredUsers.length > 0 &&
+                                      sendForm.selectedUsers.length ===
+                                        filteredUsers.length
+                                    }
+                                    isIndeterminate={
+                                      sendForm.selectedUsers.length > 0 &&
+                                      sendForm.selectedUsers.length <
+                                        filteredUsers.length
+                                    }
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        // Select all current page users
+                                        const allCurrentIds = filteredUsers.map(
+                                          (user) => user._id
+                                        );
+                                        const newSelected = [
+                                          ...new Set([
+                                            ...sendForm.selectedUsers,
+                                            ...allCurrentIds,
+                                          ]),
+                                        ];
+                                        setSendForm({
+                                          ...sendForm,
+                                          selectedUsers: newSelected,
+                                        });
+                                      } else {
+                                        // Deselect all current page users
+                                        const currentIds = filteredUsers.map(
+                                          (user) => user._id
+                                        );
+                                        const newSelected =
+                                          sendForm.selectedUsers.filter(
+                                            (id) => !currentIds.includes(id)
+                                          );
+                                        setSendForm({
+                                          ...sendForm,
+                                          selectedUsers: newSelected,
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Text fontSize="sm" fontWeight="medium">
+                                      Chọn tất cả trang này
+                                    </Text>
+                                  </Checkbox>
+                                  <Text fontSize="xs" color="gray.500">
+                                    Trang {userPage}/{userTotalPages}
+                                  </Text>
+                                </HStack>
+                              </Box>
+
+                              {/* User List Body */}
+                              <Box maxH="300px" overflowY="auto" p={2}>
+                                {loadingUsers ? (
+                                  <Box textAlign="center" py={4}>
+                                    <Text fontSize="sm" color="gray.500">
+                                      Đang tải...
+                                    </Text>
+                                  </Box>
+                                ) : filteredUsers.length > 0 ? (
+                                  <CheckboxGroup
+                                    value={sendForm.selectedUsers}
+                                    onChange={(values) =>
+                                      setSendForm({
+                                        ...sendForm,
+                                        selectedUsers: values,
+                                      })
+                                    }
+                                  >
+                                    <VStack spacing={2} align="stretch">
+                                      {filteredUsers.map((user) => (
+                                        <Box
+                                          key={user._id}
+                                          p={3}
+                                          border="1px"
+                                          borderColor="gray.200"
+                                          rounded="md"
+                                          _hover={{ bg: "gray.50" }}
+                                        >
+                                          <Checkbox value={user._id}>
+                                            <VStack align="start" spacing={1}>
+                                              <Text fontWeight="medium">
+                                                {user.displayName ||
+                                                  user.username}
+                                              </Text>
+                                              <Text
+                                                fontSize="sm"
+                                                color="gray.500"
+                                              >
+                                                {user.email}
+                                              </Text>
+                                              <HStack spacing={2}>
+                                                <Badge
+                                                  size="sm"
+                                                  colorScheme="blue"
+                                                >
+                                                  {user.role === "admin"
+                                                    ? "Admin"
+                                                    : "User"}
+                                                </Badge>
+                                                <Text
+                                                  fontSize="xs"
+                                                  color="gray.400"
+                                                >
+                                                  {new Date(
+                                                    user.createdAt
+                                                  ).toLocaleDateString("vi-VN")}
+                                                </Text>
+                                              </HStack>
+                                            </VStack>
+                                          </Checkbox>
+                                        </Box>
+                                      ))}
+                                    </VStack>
+                                  </CheckboxGroup>
+                                ) : (
+                                  <Box textAlign="center" py={4}>
+                                    <Text fontSize="sm" color="gray.500">
+                                      {userSearch
+                                        ? "Không tìm thấy người dùng"
+                                        : "Không có người dùng"}
+                                    </Text>
+                                  </Box>
+                                )}
+                              </Box>
+
+                              {/* Pagination */}
+                              {userTotalPages > 1 && (
+                                <Box
+                                  p={3}
+                                  borderTop="1px"
+                                  borderColor={borderColor}
+                                >
+                                  <HStack justify="center" spacing={2}>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        const newPage = userPage - 1;
+                                        setUserPage(newPage);
+                                        fetchUsers(newPage, userSearch);
+                                      }}
+                                      isDisabled={userPage <= 1 || loadingUsers}
+                                    >
+                                      « Trước
+                                    </Button>
+                                    <Text fontSize="sm" color="gray.500">
+                                      {userPage} / {userTotalPages}
+                                    </Text>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        const newPage = userPage + 1;
+                                        setUserPage(newPage);
+                                        fetchUsers(newPage, userSearch);
+                                      }}
+                                      isDisabled={
+                                        userPage >= userTotalPages ||
+                                        loadingUsers
+                                      }
+                                    >
+                                      Sau »
+                                    </Button>
+                                  </HStack>
+                                </Box>
+                              )}
+                            </Box>
                           </FormControl>
                         )}
                       </HStack>
 
-                      <HStack spacing={4} w="full">
-                        <FormControl>
-                          <FormLabel>Action URL (tùy chọn)</FormLabel>
-                          <Input
-                            name="actionUrl"
-                            value={formData.actionUrl}
-                            onChange={handleChange}
-                            placeholder="/movies/123"
-                          />
-                        </FormControl>
+                      <FormControl isRequired>
+                        <FormLabel>Loại thông báo</FormLabel>
+                        <Select
+                          value={sendForm.type}
+                          onChange={(e) =>
+                            setSendForm({ ...sendForm, type: e.target.value })
+                          }
+                        >
+                          <option value="admin_message">Thông báo admin</option>
+                          <option value="system">Hệ thống</option>
+                          <option value="moderation">Kiểm duyệt</option>
+                        </Select>
+                      </FormControl>
 
-                        <FormControl>
-                          <FormLabel>Action Text</FormLabel>
-                          <Input
-                            name="actionText"
-                            value={formData.actionText}
-                            onChange={handleChange}
-                            placeholder="Xem chi tiết"
-                          />
-                        </FormControl>
-                      </HStack>
+                      <FormControl isRequired isInvalid={!sendForm.title}>
+                        <FormLabel>Tiêu đề</FormLabel>
+                        <Input
+                          name="title"
+                          value={sendForm.title}
+                          onChange={(e) =>
+                            setSendForm({ ...sendForm, title: e.target.value })
+                          }
+                          placeholder="Nhập tiêu đề thông báo"
+                          focusBorderColor="blue.400"
+                        />
+                      </FormControl>
+
+                      <FormControl isRequired isInvalid={!sendForm.message}>
+                        <FormLabel>Nội dung</FormLabel>
+                        <Textarea
+                          name="message"
+                          value={sendForm.message}
+                          onChange={(e) =>
+                            setSendForm({
+                              ...sendForm,
+                              message: e.target.value,
+                            })
+                          }
+                          placeholder="Nhập nội dung thông báo"
+                          rows={4}
+                          focusBorderColor="blue.400"
+                          resize="vertical"
+                        />
+                      </FormControl>
+
+                      <FormControl>
+                        <FormLabel>URL hành động (tùy chọn)</FormLabel>
+                        <Input
+                          name="actionUrl"
+                          value={sendForm.actionUrl}
+                          onChange={(e) =>
+                            setSendForm({
+                              ...sendForm,
+                              actionUrl: e.target.value,
+                            })
+                          }
+                          placeholder="/forum/thread/example"
+                        />
+                      </FormControl>
+
+                      <FormControl>
+                        <FormLabel>Độ ưu tiên</FormLabel>
+                        <Select
+                          value={sendForm.priority}
+                          onChange={(e) =>
+                            setSendForm({
+                              ...sendForm,
+                              priority: e.target.value,
+                            })
+                          }
+                        >
+                          <option value="low">Thấp</option>
+                          <option value="normal">Bình thường</option>
+                          <option value="high">Cao</option>
+                          <option value="urgent">Khẩn cấp</option>
+                        </Select>
+                      </FormControl>
 
                       <Button
                         type="submit"
                         colorScheme="blue"
                         isLoading={loading}
-                        loadingText="Đang gửi..."
-                        leftIcon={<Icon as={FiSend} />}
+                        loadingText="Đang gửi thông báo..."
+                        leftIcon={!loading ? <Icon as={FiSend} /> : null}
                         w="full"
+                        size="lg"
+                        fontSize="md"
+                        py={6}
+                        _loading={{
+                          bg: "blue.400",
+                          color: "white",
+                          cursor: "not-allowed",
+                        }}
+                        isDisabled={!sendForm.title || !sendForm.message}
                       >
-                        Gửi thông báo
+                        {loading ? "🚀 Đang gửi..." : "📤 Gửi thông báo"}
                       </Button>
                     </VStack>
                   </form>
@@ -443,106 +811,192 @@ const AdminNotifications = () => {
 
             {/* History Tab */}
             <TabPanel p={0} pt={6}>
-              <Card bg={cardBg}>
+              <Card bg={bgColor}>
                 <CardHeader>
                   <Heading size="md">Lịch sử thông báo</Heading>
                 </CardHeader>
                 <CardBody>
-                  <TableContainer>
-                    <Table variant="simple">
-                      <Thead>
-                        <Tr>
-                          <Th>Tiêu đề</Th>
-                          <Th>Loại</Th>
-                          <Th>Gửi đến</Th>
-                          <Th>Thống kê</Th>
-                          <Th>Ngày tạo</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        {notifications.map((notification) => (
-                          <Tr key={notification._id}>
-                            <Td>
-                              <VStack align="start" spacing={1}>
-                                <Text fontWeight="medium">
-                                  {notification.title}
-                                </Text>
-                                <Text
-                                  fontSize="sm"
-                                  color="gray.500"
-                                  noOfLines={2}
-                                >
-                                  {notification.message}
-                                </Text>
-                              </VStack>
-                            </Td>
-                            <Td>
-                              <Badge
-                                colorScheme={getTypeColor(notification.type)}
-                              >
-                                {notification.type}
-                              </Badge>
-                            </Td>
-                            <Td>
-                              <Text fontSize="sm">
-                                {notification.sendType === "all"
-                                  ? "Tất cả"
-                                  : notification.sendType === "role"
-                                  ? `Role: ${notification.targetRole}`
-                                  : "Specific users"}
-                              </Text>
-                            </Td>
-                            <Td>
-                              <VStack align="start" spacing={0}>
-                                <Text fontSize="xs">
-                                  Gửi: {notification.stats?.sent || 0}
-                                </Text>
-                                <Text fontSize="xs">
-                                  Đọc: {notification.stats?.read || 0}
-                                </Text>
-                              </VStack>
-                            </Td>
-                            <Td>
-                              <Text fontSize="sm">
-                                {formatDate(notification.createdAt)}
-                              </Text>
-                            </Td>
+                  <VStack spacing={4} align="stretch">
+                    {/* Filters */}
+                    <HStack spacing={4}>
+                      <Select
+                        placeholder="Tất cả loại"
+                        value={filters.type}
+                        onChange={(e) =>
+                          setFilters({ ...filters, type: e.target.value })
+                        }
+                        maxW="200px"
+                      >
+                        <option value="thread_reply">Trả lời</option>
+                        <option value="thread_like">Thích chủ đề</option>
+                        <option value="reply_like">Thích phản hồi</option>
+                        <option value="admin_message">Thông báo admin</option>
+                        <option value="system">Hệ thống</option>
+                      </Select>
+
+                      <Select
+                        placeholder="Tất cả trạng thái"
+                        value={filters.isRead}
+                        onChange={(e) =>
+                          setFilters({ ...filters, isRead: e.target.value })
+                        }
+                        maxW="200px"
+                      >
+                        <option value="true">Đã đọc</option>
+                        <option value="false">Chưa đọc</option>
+                      </Select>
+                    </HStack>
+
+                    {/* Notifications Table */}
+                    <Box overflowX="auto">
+                      <Table variant="simple">
+                        <Thead>
+                          <Tr>
+                            <Th>Người nhận</Th>
+                            <Th>Loại</Th>
+                            <Th>Tiêu đề</Th>
+                            <Th>Trạng thái</Th>
+                            <Th>Ngày tạo</Th>
+                            <Th>Thao tác</Th>
                           </Tr>
-                        ))}
-                      </Tbody>
-                    </Table>
-                  </TableContainer>
-                </CardBody>
-              </Card>
-            </TabPanel>
+                        </Thead>
+                        <Tbody>
+                          {Array.isArray(notifications) &&
+                          notifications.length > 0 ? (
+                            notifications.map((notification) => (
+                              <Tr key={notification._id}>
+                                <Td>
+                                  <VStack align="start" spacing={1}>
+                                    <Text fontWeight="medium">
+                                      {notification.recipient?.displayName ||
+                                        notification.recipient?.username}
+                                    </Text>
+                                    <Text fontSize="sm" color="gray.500">
+                                      {notification.recipient?.email}
+                                    </Text>
+                                  </VStack>
+                                </Td>
+                                <Td>
+                                  <Badge
+                                    colorScheme={getTypeColor(
+                                      notification.type
+                                    )}
+                                  >
+                                    {getTypeLabel(notification.type)}
+                                  </Badge>
+                                </Td>
+                                <Td>
+                                  <VStack align="start" spacing={1}>
+                                    <Text fontWeight="medium">
+                                      {notification.title}
+                                    </Text>
+                                    <Text
+                                      fontSize="sm"
+                                      color="gray.500"
+                                      noOfLines={2}
+                                    >
+                                      {notification.message}
+                                    </Text>
+                                  </VStack>
+                                </Td>
+                                <Td>
+                                  <Badge
+                                    colorScheme={
+                                      notification.isRead ? "green" : "red"
+                                    }
+                                  >
+                                    {notification.isRead
+                                      ? "Đã đọc"
+                                      : "Chưa đọc"}
+                                  </Badge>
+                                </Td>
+                                <Td>
+                                  <Text fontSize="sm">
+                                    {new Date(
+                                      notification.createdAt
+                                    ).toLocaleString("vi-VN")}
+                                  </Text>
+                                </Td>
+                                <Td>
+                                  <IconButton
+                                    icon={<FiTrash2 />}
+                                    size="sm"
+                                    colorScheme="red"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setDeleteId(notification._id);
+                                      onDeleteOpen();
+                                    }}
+                                  />
+                                </Td>
+                              </Tr>
+                            ))
+                          ) : (
+                            <Tr>
+                              <Td colSpan={6} textAlign="center" py={8}>
+                                <Text color="gray.500">
+                                  {loading
+                                    ? "Đang tải..."
+                                    : "Chưa có thông báo nào"}
+                                </Text>
+                              </Td>
+                            </Tr>
+                          )}
+                        </Tbody>
+                      </Table>
+                    </Box>
 
-            {/* Test Tab */}
-            <TabPanel p={0} pt={6}>
-              <Card bg={cardBg}>
-                <CardHeader>
-                  <Heading size="md">🧪 Test thông báo</Heading>
-                </CardHeader>
-                <CardBody>
-                  <VStack spacing={4}>
-                    <Text color="gray.500">
-                      Gửi test notification để kiểm tra Socket.IO connection
-                    </Text>
-
-                    <Button
-                      colorScheme="orange"
-                      onClick={sendTestNotification}
-                      leftIcon={<Icon as={FiActivity} />}
-                    >
-                      Gửi Test Notification
-                    </Button>
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={(page) => {
+                          setCurrentPage(page);
+                          fetchNotifications(page);
+                        }}
+                      />
+                    )}
                   </VStack>
                 </CardBody>
               </Card>
             </TabPanel>
           </TabPanels>
         </Tabs>
+
+        {/* Delete Confirmation */}
+        <AlertDialog
+          isOpen={isDeleteOpen}
+          leastDestructiveRef={cancelRef}
+          onClose={onDeleteClose}
+        >
+          <AlertDialogOverlay>
+            <AlertDialogContent>
+              <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                Xóa thông báo
+              </AlertDialogHeader>
+              <AlertDialogBody>
+                Bạn có chắc chắn muốn xóa thông báo này không? Hành động này
+                không thể hoàn tác.
+              </AlertDialogBody>
+              <AlertDialogFooter>
+                <Button ref={cancelRef} onClick={onDeleteClose}>
+                  Hủy
+                </Button>
+                <Button
+                  colorScheme="red"
+                  onClick={() => deleteNotification(deleteId)}
+                  ml={3}
+                  isLoading={loading}
+                >
+                  Xóa
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialogOverlay>
+        </AlertDialog>
       </VStack>
-    </Box>
+    </AdminLayout>
   );
 };
 

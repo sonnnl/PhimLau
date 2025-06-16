@@ -67,7 +67,6 @@ const NotificationCenter = () => {
 
       socket.current.on("connect", () => {
         console.log("🔌 Connected to notification socket");
-        window.socket = socket.current; // Store for admin test
       });
 
       socket.current.on("notification", (notification) => {

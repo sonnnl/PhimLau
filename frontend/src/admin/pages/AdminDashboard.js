@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import AdminLayout from "../components/AdminLayout";
 import {
   Box,
   Card,
@@ -28,6 +29,8 @@ import {
   FiTrendingUp,
   FiShield,
   FiSettings,
+  FiMessageSquare,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import { getDashboardStats } from "../services/adminService.js";
 
@@ -116,18 +119,8 @@ const AdminDashboard = () => {
   }
 
   return (
-    <Box p={6} maxW="1400px" mx="auto">
+    <AdminLayout title="👑 Dashboard">
       <VStack spacing={6} align="stretch">
-        {/* Header */}
-        <Box>
-          <Heading size="xl" color="brand.accent" mb={2}>
-            👑 Admin Dashboard
-          </Heading>
-          <Text color="gray.500">
-            Quản lý hệ thống Movie Review - Chỉ nghiệp vụ thực tế
-          </Text>
-        </Box>
-
         {/* Statistics Grid */}
         <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6}>
           <Card bg={cardBg}>
@@ -174,41 +167,58 @@ const AdminDashboard = () => {
           <Card bg={cardBg}>
             <CardBody>
               <Stat>
-                <StatLabel>Admin</StatLabel>
-                <StatNumber color="purple.500">
-                  {stats.users?.admins || 0}
+                <StatLabel>Forum threads</StatLabel>
+                <StatNumber color="teal.500">
+                  {stats.forum?.totalThreads || 0}
                 </StatNumber>
-                <StatHelpText>Quản trị viên</StatHelpText>
+                <StatHelpText>
+                  <StatArrow type="increase" />+
+                  {stats.forum?.recentThreads || 0} mới
+                </StatHelpText>
               </Stat>
             </CardBody>
           </Card>
         </SimpleGrid>
 
-        {/* Action Cards - Chỉ nghiệp vụ thực tế */}
-        <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
+        {/* Action Cards */}
+        <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={6}>
           <AdminActionCard
             title="👥 Quản lý Users"
-            description="Quản lý người dùng, phân quyền và moderation."
+            description="Quản lý người dùng, phân quyền và moderation"
             icon={FiUsers}
             color="blue"
             actions={[
               { label: "Danh sách users", link: "/admin/users", icon: FiUsers },
+            ]}
+          />
+
+          <AdminActionCard
+            title="💬 Quản lý Forum"
+            description="Moderation forum threads, replies và community management"
+            icon={FiMessageSquare}
+            color="teal"
+            actions={[
               {
-                label: "Phân quyền admin",
-                link: "/admin/users?role=admin",
+                label: "Quản lý danh mục",
+                link: "/admin/forum/categories",
+                icon: FiMessageSquare,
+              },
+              {
+                label: "Quản lý bài viết",
+                link: "/admin/forum/threads",
                 icon: FiShield,
               },
               {
-                label: "Users hoạt động",
-                link: "/admin/users?active=true",
-                icon: FiActivity,
+                label: "Báo cáo vi phạm",
+                link: "/admin/forum/reports",
+                icon: FiAlertTriangle,
               },
             ]}
           />
 
           <AdminActionCard
             title="📢 Quản lý Thông báo"
-            description="Gửi thông báo real-time cho users, quản lý announcements."
+            description="Gửi thông báo real-time cho users"
             icon={FiBell}
             color="green"
             actions={[
@@ -222,17 +232,12 @@ const AdminDashboard = () => {
                 link: "/admin/notifications?tab=history",
                 icon: FiTrendingUp,
               },
-              {
-                label: "Test notifications",
-                link: "/admin/notifications?tab=test",
-                icon: FiActivity,
-              },
             ]}
           />
 
           <AdminActionCard
             title="⭐ Quản lý Reviews"
-            description="Moderation đánh giá phim, spam detection và quality control."
+            description="Moderation đánh giá phim và spam detection"
             icon={FiStar}
             color="orange"
             actions={[
@@ -246,17 +251,12 @@ const AdminDashboard = () => {
                 link: "/admin/reviews/reports",
                 icon: FiShield,
               },
-              {
-                label: "Thống kê đánh giá",
-                link: "/admin/reviews/stats",
-                icon: FiTrendingUp,
-              },
             ]}
           />
 
           <AdminActionCard
             title="⚙️ Cấu hình Hệ thống"
-            description="Settings, logs và monitoring hệ thống."
+            description="Settings, logs và monitoring hệ thống"
             icon={FiSettings}
             color="purple"
             actions={[
@@ -277,7 +277,7 @@ const AdminDashboard = () => {
             <Heading size="md">📊 Thống kê nhanh</Heading>
           </CardHeader>
           <CardBody>
-            <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
+            <SimpleGrid columns={{ base: 2, md: 5 }} spacing={4}>
               <Box textAlign="center">
                 <Text fontSize="2xl" fontWeight="bold" color="blue.500">
                   {Math.floor(
@@ -299,6 +299,14 @@ const AdminDashboard = () => {
                 </Text>
               </Box>
               <Box textAlign="center">
+                <Text fontSize="2xl" fontWeight="bold" color="teal.500">
+                  {stats.forum?.totalReplies || 0}
+                </Text>
+                <Text fontSize="sm" color="gray.500">
+                  Forum replies
+                </Text>
+              </Box>
+              <Box textAlign="center">
                 <Text fontSize="2xl" fontWeight="bold" color="orange.500">
                   {Math.floor(stats.system?.uptime / 3600) || 0}h
                 </Text>
@@ -308,10 +316,10 @@ const AdminDashboard = () => {
               </Box>
               <Box textAlign="center">
                 <Text fontSize="2xl" fontWeight="bold" color="purple.500">
-                  {stats.system?.platform || "N/A"}
+                  {stats.users?.admins || 0}
                 </Text>
                 <Text fontSize="sm" color="gray.500">
-                  Platform
+                  Admins
                 </Text>
               </Box>
             </SimpleGrid>
@@ -333,7 +341,7 @@ const AdminDashboard = () => {
           </Text>
         </Box>
       </VStack>
-    </Box>
+    </AdminLayout>
   );
 };
 

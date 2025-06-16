@@ -1,12 +1,17 @@
 import mongoose from "mongoose";
-import bcrypt from "bcryptjs"; // Sẽ cài đặt thư viện này sau
+import bcrypt from "bcryptjs";
+import crypto from "crypto"; // Sẽ cài đặt thư viện này sau
 
 const userSchema = new mongoose.Schema(
   {
     username: {
       type: String,
-      required: [true, "Please provide a username"],
+      required: function () {
+        // Username chỉ bắt buộc nếu không phải Google account
+        return !this.isGoogleAccount;
+      },
       unique: true,
+      sparse: true, // Cho phép nhiều null values nhưng unique khi có giá trị
       trim: true,
       minlength: [3, "Username must be at least 3 characters long"],
     },
@@ -23,7 +28,10 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Please provide a password"],
+      required: function () {
+        // Password chỉ bắt buộc nếu không phải Google account
+        return !this.isGoogleAccount;
+      },
       minlength: [6, "Password must be at least 6 characters long"],
       select: false, // Mật khẩu sẽ không được trả về trong query trừ khi được chỉ định rõ
     },
@@ -36,6 +44,11 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin"],
       default: "user",
     },
+    status: {
+      type: String,
+      enum: ["active", "suspended", "banned", "inactive"],
+      default: "active",
+    },
     // Google OAuth specific fields
     googleId: {
       type: String,
@@ -47,11 +60,104 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Email verification fields
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
+      select: false, // Không trả về trong query thông thường
+    },
+    emailVerificationExpires: {
+      type: Date,
+      select: false,
+    },
+    // Password reset fields
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
+    // Đánh dấu tài khoản có phải từ Google không (để skip verification)
+    isGoogleAccount: {
+      type: Boolean,
+      default: false,
+    },
+    // Đánh dấu user đã tùy chỉnh profile chưa (để tránh ghi đè khi đăng nhập Google)
+    hasCustomizedProfile: {
+      type: Boolean,
+      default: false,
+    },
     // Chúng ta có thể thêm các trường khác như facebookId nếu cần sau này
 
     // Fields for watch history, favorites, etc. can be added later or handled in separate collections
     // watchHistory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Movie' }],
     // favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Movie' }],
+
+    // Forum activity tracking
+    forumStats: {
+      postsCount: {
+        type: Number,
+        default: 0,
+      },
+      repliesCount: {
+        type: Number,
+        default: 0,
+      },
+      likesReceived: {
+        type: Number,
+        default: 0,
+      },
+      reportsReceived: {
+        type: Number,
+        default: 0,
+      },
+      lastPostDate: {
+        type: Date,
+      },
+    },
+
+    // Moderation trust level
+    trustLevel: {
+      type: String,
+      enum: ["new", "basic", "trusted", "moderator", "admin"],
+      default: "new",
+    },
+
+    // Auto-approval eligibility
+    autoApprovalEnabled: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Moderation fields
+    suspendedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    suspendedAt: {
+      type: Date,
+    },
+    suspensionReason: {
+      type: String,
+    },
+    suspensionExpires: {
+      type: Date,
+    },
+    bannedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    bannedAt: {
+      type: Date,
+    },
+    banReason: {
+      type: String,
+    },
   },
   {
     timestamps: true, // Tự động thêm createdAt và updatedAt
@@ -77,6 +183,34 @@ userSchema.pre("save", async function (next) {
 userSchema.methods.matchPassword = async function (enteredPassword) {
   if (!this.password) return false; // Nếu user không có password (ví dụ đăng nhập bằng Google)
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Method để tạo email verification token
+userSchema.methods.createEmailVerificationToken = function () {
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+
+  this.emailVerificationToken = crypto
+    .createHash("sha256")
+    .update(verificationToken)
+    .digest("hex");
+
+  this.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 giờ
+
+  return verificationToken;
+};
+
+// Method để tạo password reset token
+userSchema.methods.createPasswordResetToken = function () {
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  this.passwordResetToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 phút
+
+  return resetToken;
 };
 
 const User = mongoose.model("User", userSchema);

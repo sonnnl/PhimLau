@@ -1,7 +1,5 @@
 import asyncHandler from "express-async-handler";
-import Notification, {
-  NotificationRead,
-} from "../../models/NotificationModel.js";
+import Notification from "../../models/NotificationModel.js";
 import User from "../../models/UserModel.js";
 
 // @desc    Send notification to users (Admin only)
@@ -192,5 +190,72 @@ const getAllNotifications = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// 🔥 GỬI THÔNG BÁO KIỂM DUYỆT CHO USER
+export const createModerationNotification = async ({
+  userId,
+  threadId,
+  threadTitle,
+  status,
+  note,
+  moderatorName,
+}) => {
+  try {
+    const statusMessages = {
+      approved: {
+        title: "✅ Bài viết đã được phê duyệt",
+        message: `Bài viết "${threadTitle}" của bạn đã được phê duyệt và hiển thị công khai.`,
+        type: "system",
+      },
+      rejected: {
+        title: "❌ Bài viết bị từ chối",
+        message: `Bài viết "${threadTitle}" của bạn đã bị từ chối. Lý do: ${
+          note || "Không có lý do cụ thể"
+        }.`,
+        type: "moderation",
+      },
+      pending: {
+        title: "⏳ Bài viết đang chờ kiểm duyệt",
+        message: `Bài viết "${threadTitle}" của bạn đang được xem xét lại.`,
+        type: "system",
+      },
+    };
+
+    const messageData = statusMessages[status];
+    if (!messageData) return;
+
+    // Tạo notification trong database
+    const notification = new Notification({
+      recipient: userId,
+      type: messageData.type,
+      title: messageData.title,
+      message: messageData.message,
+      actionUrl: status === "approved" ? `/forum/thread/${threadId}` : null,
+      relatedData: {
+        threadId,
+      },
+    });
+
+    await notification.save();
+
+    // Emit real-time notification qua Socket.IO
+    const io = global.io;
+    if (io) {
+      io.to(`user_${userId}`).emit("notification", {
+        id: notification._id,
+        title: messageData.title,
+        message: messageData.message,
+        type: messageData.type,
+        actionUrl: notification.actionUrl,
+        createdAt: notification.createdAt,
+        isRead: false,
+      });
+    }
+
+    console.log(`📧 Moderation notification sent to user ${userId}: ${status}`);
+  } catch (error) {
+    console.error("Error creating moderation notification:", error);
+  }
+};
 
 export { sendNotification, getNotificationStats, getAllNotifications };

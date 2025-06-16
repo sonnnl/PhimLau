@@ -87,6 +87,12 @@ export const AuthProvider = ({ children }) => {
     // navigate('/'); // Có thể điều hướng ở đây hoặc ở component gọi logout
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    if (token) {
+      await fetchUser(token);
+    }
+  }, [fetchUser, token]);
+
   const value = {
     token,
     user,
@@ -96,6 +102,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     fetchUser,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
