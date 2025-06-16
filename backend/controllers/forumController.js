@@ -226,7 +226,7 @@ const getThreadBySlug = asyncHandler(async (req, res) => {
               author: { $arrayElemAt: ["$author", 0] },
             },
           },
-          { $project: { content: 1, author: 1 } },
+          { $project: { content: 1, author: 1, isDeleted: 1 } },
         ],
       },
     },
@@ -901,7 +901,7 @@ const createReply = asyncHandler(async (req, res) => {
   // ===== 📤 POPULATE VÀ TRẢ VỀ =====
   const populatedReply = await ForumReply.findById(createdReply._id)
     .populate("author", "displayName avatarUrl")
-    .populate("parentReply", "content author");
+    .populate("parentReply", "content author isDeleted");
 
   // ===== 🔔 TẠO THÔNG BÁO CHO TÁC GIẢ THREAD (CHỈ NẾU APPROVED) =====
   if (moderationStatus === "approved") {
