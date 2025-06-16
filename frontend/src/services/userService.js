@@ -1,11 +1,10 @@
 import axios from "axios";
 
-const API_BASE_URL =
-  process.env.REACT_APP_BACKEND_API_URL || "http://localhost:5001";
+const API_URL = process.env.REACT_APP_API_URL;
 
 // Tạo axios instance
 const userAPI = axios.create({
-  baseURL: `${API_BASE_URL}/api/user`,
+  baseURL: `${API_URL}/user`,
   headers: {
     "Content-Type": "application/json",
   },

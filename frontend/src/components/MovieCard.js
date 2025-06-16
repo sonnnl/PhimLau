@@ -32,7 +32,7 @@ const MovieCard = ({ movie }) => {
     return `${CDN_IMAGE_DOMAIN}/${path}`;
   };
 
-  const imageUrl = getImageUrl(movie.poster_url || movie.thumb_url);
+  const imageUrl = getImageUrl(movie.posterUrl || movie.thumb_url);
 
   const avgRating =
     movie.movieMetadata?.appAverageRating || movie.appAverageRating;
@@ -79,16 +79,7 @@ const MovieCard = ({ movie }) => {
         flexDirection="column"
       >
         <AspectRatio ratio={2 / 3} width="100%">
-          <Image
-            src={imageUrl}
-            alt={movie.name}
-            objectFit="cover"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src =
-                "https://via.placeholder.com/300x450.png?text=Image+Error";
-            }}
-          />
+          <Image src={imageUrl} alt={movie.name} objectFit="cover" />
         </AspectRatio>
         <Box
           p="4"

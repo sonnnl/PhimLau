@@ -1,12 +1,12 @@
 import axios from "axios";
 
-const API_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5001/api/favorites";
+const API_URL = `${process.env.REACT_APP_API_URL}/favorites`;
 
 const getAuthConfig = () => {
-  const token = localStorage.getItem("myMovieAppToken");
+  const token = localStorage.getItem("movieAppToken");
 
   if (!token) {
+    console.error("No token found");
     return {};
   }
 

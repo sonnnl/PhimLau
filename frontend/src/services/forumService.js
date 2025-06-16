@@ -1,12 +1,11 @@
 import axios from "axios";
 
 // ===== API CONFIGURATION =====
-const BACKEND_API_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5001/api";
+const API_URL = process.env.REACT_APP_API_URL;
 
 // Tạo axios instance riêng cho Forum API
 const forumApiClient = axios.create({
-  baseURL: `${BACKEND_API_URL}/forum`,
+  baseURL: `${API_URL}/forum`,
 });
 
 // ===== INTERCEPTOR SETUP =====

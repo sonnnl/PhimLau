@@ -2,8 +2,7 @@ import axios from "axios";
 
 // Đảm bảo biến môi trường được thiết lập đúng trong file .env ở thư mục frontend
 // Ví dụ: REACT_APP_API_URL=http://localhost:5001/api
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5001/api";
+const API_URL = process.env.REACT_APP_API_URL;
 
 const reviewService = {
   // Tạo hoặc cập nhật một review
@@ -17,7 +16,7 @@ const reviewService = {
       };
       // reviewData nên là { rating, content }
       const { data } = await axios.post(
-        `${API_BASE_URL}/reviews/${movieId}`,
+        `${API_URL}/reviews/${movieId}`,
         reviewData,
         config
       );
@@ -36,7 +35,7 @@ const reviewService = {
   getReviewsForMovie: async (movieId, pageNumber = 1) => {
     try {
       const { data } = await axios.get(
-        `${API_BASE_URL}/reviews/${movieId}?pageNumber=${pageNumber}`
+        `${API_URL}/reviews/${movieId}?pageNumber=${pageNumber}`
       );
       // API trả về { reviews, page, pages, count }
       return data;
@@ -59,7 +58,7 @@ const reviewService = {
         },
       };
       const { data } = await axios.delete(
-        `${API_BASE_URL}/reviews/${reviewId}`,
+        `${API_URL}/reviews/${reviewId}`,
         config
       );
       return data;

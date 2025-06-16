@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import favoriteService from "../services/favoriteService";
+import MovieCard from "../components/MovieCard";
 import {
   Container,
   Heading,
@@ -20,8 +22,6 @@ import {
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { ChevronRightIcon } from "@chakra-ui/icons";
 import { FaHeart } from "react-icons/fa";
-import favoriteService from "../services/favoriteService";
-import MovieCard from "../components/MovieCard";
 
 const FavoriteMoviesPage = () => {
   const [movies, setMovies] = useState([]);
@@ -29,7 +29,6 @@ const FavoriteMoviesPage = () => {
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
-
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   useEffect(() => {
@@ -120,7 +119,7 @@ const FavoriteMoviesPage = () => {
             spacing={{ base: 4, md: 6 }}
           >
             {movies.map((movie) => (
-              <MovieCard key={movie._id} movie={movie} />
+              <MovieCard key={movie._id || movie.slug} movie={movie} />
             ))}
           </SimpleGrid>
 
