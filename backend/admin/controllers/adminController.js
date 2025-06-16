@@ -3,6 +3,7 @@ import User from "../../models/UserModel.js";
 import Review from "../../models/ReviewModel.js";
 import ForumThread from "../../models/ForumThread.js";
 import ForumReply from "../../models/ForumReply.js";
+import ForumAdminLog from "../../models/ForumAdminLog.js";
 
 // @desc    Get admin dashboard statistics
 // @route   GET /api/admin/stats
@@ -159,6 +160,17 @@ const updateUserRole = asyncHandler(async (req, res) => {
       });
     }
 
+    // Log the action
+    await ForumAdminLog.logAction({
+      admin: req.user._id,
+      action: "user_updated",
+      targetType: "user",
+      targetId: user._id,
+      reason: `Changed role to ${role}`,
+      metadata: { username: user.username },
+      ipAddress: req.ip,
+    });
+
     res.json({
       success: true,
       message: `Đã cập nhật quyền thành ${role}`,
@@ -302,6 +314,17 @@ const updateUserStatus = asyncHandler(async (req, res) => {
       inactive: "vô hiệu hóa",
     };
 
+    // Log the action
+    await ForumAdminLog.logAction({
+      admin: req.user._id,
+      action: "user_updated",
+      targetType: "user",
+      targetId: updatedUser._id,
+      reason: `Changed status to ${status}. Reason: ${reason || "N/A"}`,
+      metadata: { username: updatedUser.username },
+      ipAddress: req.ip,
+    });
+
     res.json({
       success: true,
       message: `Đã ${statusMessages[status]} tài khoản`,
@@ -331,7 +354,7 @@ const deleteUser = asyncHandler(async (req, res) => {
       });
     }
 
-    const user = await User.findByIdAndDelete(userId);
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -340,9 +363,22 @@ const deleteUser = asyncHandler(async (req, res) => {
       });
     }
 
+    // Log the action BEFORE deleting
+    await ForumAdminLog.logAction({
+      admin: req.user._id,
+      action: "user_deleted",
+      targetType: "user",
+      targetId: user._id,
+      reason: `Deleted user: ${user.username} (ID: ${user._id})`,
+      metadata: { username: user.username },
+      ipAddress: req.ip,
+    });
+
+    await user.deleteOne(); // Use deleteOne to trigger middleware if any
+
     res.json({
       success: true,
-      message: "Đã xóa user thành công",
+      message: "Đã xóa user và các nội dung liên quan thành công",
     });
   } catch (error) {
     res.status(500).json({

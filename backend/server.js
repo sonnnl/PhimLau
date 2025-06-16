@@ -14,6 +14,7 @@ import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./admin/routes/adminRoutes.js";
 import adminNotificationRoutes from "./admin/routes/adminNotificationRoutes.js";
 import reviewAdminRoutes from "./admin/routes/reviewAdminRoutes.js";
+import adminLogRoutes from "./admin/routes/adminLogRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import likeRoutes from "./routes/likeRoutes.js";
 
@@ -52,6 +53,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin/reviews", reviewAdminRoutes);
 app.use("/api/admin/notifications", adminNotificationRoutes);
+app.use("/api/admin/logs", adminLogRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/likes", likeRoutes);
 

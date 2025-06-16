@@ -241,6 +241,42 @@ export const updateReview = async (reviewId, reviewData) => {
   }
 };
 
+// ================================
+// LOGGING SERVICES
+// ================================
+export const getAdminLogs = async (params = {}) => {
+  try {
+    const response = await adminAPI.get("/logs", { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Lỗi khi lấy nhật ký hoạt động"
+    );
+  }
+};
+
+export const getLogAdmins = async () => {
+  try {
+    const response = await adminAPI.get("/logs/admins");
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Lỗi khi lấy danh sách admin"
+    );
+  }
+};
+
+export const getLogActions = async () => {
+  try {
+    const response = await adminAPI.get("/logs/actions");
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Lỗi khi lấy danh sách hành động"
+    );
+  }
+};
+
 // Export default object với tất cả services
 export default {
   // Dashboard
@@ -269,4 +305,9 @@ export default {
   getAllReviews,
   deleteReview,
   updateReview,
+
+  // Logging
+  getAdminLogs,
+  getLogAdmins,
+  getLogActions,
 };

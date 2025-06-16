@@ -322,34 +322,19 @@ export const moderateThread = asyncHandler(async (req, res) => {
     }
 
     // 🔥 LOG ADMIN ACTION
-    try {
-      await ForumAdminLog.logAction({
-        admin: req.user._id,
-        action:
-          status === "approved"
-            ? "thread_approved"
-            : status === "rejected"
-            ? "thread_rejected"
-            : "thread_pending",
-        targetType: "thread",
-        targetId: thread._id,
-        beforeData,
-        afterData: {
-          moderationStatus: status,
-          isApproved: status === "approved",
-          moderationNote: note || "",
-          moderatedAt: thread.moderatedAt,
-        },
-        reason: note || "",
-        ipAddress: req.ip,
-        userAgent: req.get("User-Agent"),
-      });
-    } catch (logError) {
-      console.error("❌ Error logging admin action:", logError);
-    }
+    await ForumAdminLog.logAction({
+      admin: req.user._id,
+      action: `thread_${status}`, // e.g., thread_approved, thread_rejected
+      targetType: "thread",
+      targetId: thread._id,
+      reason: `Moderated thread to ${status}. Note: ${note || "N/A"}`,
+      metadata: { threadSlug: thread.slug, threadTitle: thread.title },
+      ipAddress: req.ip,
+      userAgent: req.get("User-Agent"),
+    });
 
     // Get updated thread with full population
-    const updatedThread = await ForumThread.findById(thread._id)
+    const populatedThread = await ForumThread.findById(thread._id)
       .populate("author", "username email displayName")
       .populate("moderatedBy", "username displayName")
       .populate("category", "name slug");
@@ -357,7 +342,7 @@ export const moderateThread = asyncHandler(async (req, res) => {
     // Send success response
     res.json({
       success: true,
-      data: updatedThread,
+      data: populatedThread,
       message:
         status === "approved"
           ? "✅ Bài viết đã được phê duyệt"
@@ -612,30 +597,26 @@ export const moderateReply = asyncHandler(async (req, res) => {
     }
 
     // 🔥 LOG ADMIN ACTION
-    try {
-      await ForumAdminLog.logAction({
-        admin: req.user._id,
-        action:
-          status === "approved"
-            ? "reply_approved"
-            : status === "rejected"
-            ? "reply_rejected"
-            : "reply_pending",
-        targetType: "reply",
-        targetId: reply._id,
-        beforeData,
-        afterData: {
-          moderationStatus: status,
-          moderationNote: note || "",
-          moderatedAt: reply.moderatedAt,
-        },
-        reason: note || "",
-        ipAddress: req.ip,
-        userAgent: req.get("User-Agent"),
-      });
-    } catch (logError) {
-      console.error("❌ Error logging admin action:", logError);
-    }
+    await ForumAdminLog.logAction({
+      admin: req.user._id,
+      action:
+        status === "approved"
+          ? "reply_approved"
+          : status === "rejected"
+          ? "reply_rejected"
+          : "reply_pending",
+      targetType: "reply",
+      targetId: reply._id,
+      beforeData,
+      afterData: {
+        moderationStatus: status,
+        moderationNote: note || "",
+        moderatedAt: reply.moderatedAt,
+      },
+      reason: note || "",
+      ipAddress: req.ip,
+      userAgent: req.get("User-Agent"),
+    });
 
     // Get updated reply with full population
     const updatedReply = await ForumReply.findById(reply._id)

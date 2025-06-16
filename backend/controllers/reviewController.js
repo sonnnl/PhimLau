@@ -56,9 +56,8 @@ const getReviewsForMovie = asyncHandler(async (req, res) => {
 
   const count = await Review.countDocuments({
     movie: movieId,
-    parentReview: null,
-  }); // Chỉ đếm review gốc
-  const reviews = await Review.find({ movie: movieId, parentReview: null })
+  });
+  const reviews = await Review.find({ movie: movieId })
     .populate("user", "name avatarUrl") // Chỉ lấy tên và avatar của user
     .limit(pageSize)
     .skip(pageSize * (page - 1))
@@ -88,6 +87,9 @@ const deleteReview = asyncHandler(async (req, res) => {
     res.status(401);
     throw new Error("Không được phép xóa đánh giá này.");
   }
+
+  // Logic xóa replies không cần thiết vì người dùng chỉ xóa được review của chính mình
+  // và parentReview đã được loại bỏ
 
   // Sử dụng findOneAndDelete để trigger 'post' middleware trong ReviewModel
   const deletedReview = await Review.findOneAndDelete({ _id: reviewId });

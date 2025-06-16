@@ -2,6 +2,7 @@ import asyncHandler from "express-async-handler";
 import Review from "../../models/ReviewModel.js";
 import MovieMetadata from "../../models/MovieMetadataModel.js";
 import User from "../../models/UserModel.js";
+import ForumAdminLog from "../../models/ForumAdminLog.js";
 
 // @desc    Get all reviews (admin)
 // @route   GET /api/admin/reviews
@@ -28,7 +29,7 @@ const getAllReviews = asyncHandler(async (req, res) => {
   const reviews = await Review.find(query)
     .populate({
       path: "user",
-      select: "username profile.avatar",
+      select: "username avatarUrl",
     })
     .populate({
       path: "movie",
@@ -76,7 +77,10 @@ const getReviewById = asyncHandler(async (req, res) => {
 // @route   DELETE /api/admin/reviews/:id
 // @access  Private/Admin
 const deleteReview = asyncHandler(async (req, res) => {
-  const review = await Review.findById(req.params.id);
+  const review = await Review.findById(req.params.id).populate({
+    path: "movie",
+    select: "slug",
+  });
 
   if (!review) {
     res.status(404);
@@ -87,12 +91,21 @@ const deleteReview = asyncHandler(async (req, res) => {
   // to recalculate the average rating.
   await Review.findByIdAndDelete(req.params.id);
 
-  // Also, delete any replies to this review
-  await Review.deleteMany({ parentReview: req.params.id });
+  // Log the action
+  await ForumAdminLog.logAction({
+    admin: req.user._id,
+    action: "review_deleted",
+    targetType: "review",
+    targetId: review._id,
+    reason: `Deleted review: "${review.content.substring(0, 50)}..."`,
+    metadata: { movieSlug: review.movie?.slug },
+    ipAddress: req.ip,
+  });
 
-  res
-    .status(200)
-    .json({ message: "Review and its replies deleted successfully" });
+  // Logic to delete replies has been removed as it's no longer needed
+  // await Review.deleteMany({ parentReview: req.params.id });
+
+  res.status(200).json({ message: "Review deleted successfully" });
 });
 
 // @desc    Update a review content (admin moderation)
@@ -101,18 +114,33 @@ const deleteReview = asyncHandler(async (req, res) => {
 const updateReview = asyncHandler(async (req, res) => {
   const { content } = req.body;
 
-  const review = await Review.findById(req.params.id);
+  const review = await Review.findById(req.params.id).populate({
+    path: "movie",
+    select: "slug",
+  });
 
   if (!review) {
     res.status(404);
     throw new Error("Review not found");
   }
 
+  const oldContent = review.content;
   review.content = content || review.content;
-  // Potentially add a flag to show it was edited by an admin
-  // review.isEditedByAdmin = true;
 
   const updatedReview = await review.save();
+
+  // Log the action
+  await ForumAdminLog.logAction({
+    admin: req.user._id,
+    action: "review_updated",
+    targetType: "review",
+    targetId: review._id,
+    beforeData: { content: oldContent },
+    afterData: { content: updatedReview.content },
+    reason: `Updated review content`,
+    metadata: { movieSlug: review.movie?.slug },
+    ipAddress: req.ip,
+  });
 
   res.status(200).json(updatedReview);
 });

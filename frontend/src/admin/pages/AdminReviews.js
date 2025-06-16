@@ -302,7 +302,7 @@ const AdminReviews = () => {
                             <Avatar
                               size="sm"
                               name={review.user?.username}
-                              src={review.user?.profile?.avatar}
+                              src={review.user?.avatarUrl}
                             />
                             <Text>{review.user?.username || "N/A"}</Text>
                           </HStack>

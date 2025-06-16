@@ -31,6 +31,8 @@ import {
   FiSettings,
   FiMessageSquare,
   FiAlertTriangle,
+  FiBookOpen,
+  FiTool,
 } from "react-icons/fi";
 import { getDashboardStats } from "../services/adminService.js";
 
@@ -262,12 +264,20 @@ const AdminDashboard = () => {
             color="purple"
             actions={[
               {
-                label: "System health",
-                link: "/admin/system",
+                label: "Nhật ký hoạt động",
+                link: "/admin/logs",
+                icon: FiBookOpen,
+              },
+              {
+                label: "Cài đặt hệ thống",
+                link: "/admin/settings",
+                icon: FiTool,
+              },
+              {
+                label: "Giám sát hệ thống",
+                link: "/admin/monitoring",
                 icon: FiActivity,
               },
-              { label: "Server logs", link: "/admin/logs", icon: FiTrendingUp },
-              { label: "Cấu hình", link: "/admin/settings", icon: FiSettings },
             ]}
           />
         </SimpleGrid>

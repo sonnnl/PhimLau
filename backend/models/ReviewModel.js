@@ -24,12 +24,6 @@ const reviewSchema = new mongoose.Schema(
       maxlength: [5000, "Review content cannot exceed 5000 characters"],
       required: [true, "Review content cannot be empty"],
     },
-    // Cho phép trả lời bình luận (bình luận cha)
-    parentReview: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Review", // Tham chiếu đến chính nó
-      default: null,
-    },
     // Optional: theo dõi lượt upvote/downvote cho bình luận
     // upvotes: {
     //   type: Number,

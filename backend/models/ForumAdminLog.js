@@ -43,6 +43,12 @@ const ForumAdminLogSchema = new mongoose.Schema(
         "user_suspended",
         "user_banned",
         "user_unbanned",
+        "user_updated",
+        "user_deleted",
+
+        // Review actions
+        "review_deleted",
+        "review_updated",
 
         // Report actions
         "report_reviewed",

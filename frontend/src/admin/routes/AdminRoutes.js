@@ -8,6 +8,9 @@ import AdminForumCategories from "../pages/AdminForumCategories";
 import AdminForumThreads from "../pages/AdminForumThreads";
 import AdminForumReports from "../pages/AdminForumReports";
 import AdminReviews from "../pages/AdminReviews";
+import AdminLogsPage from "../pages/AdminLogsPage";
+import AdminSettingsPage from "../pages/AdminSettingsPage";
+import AdminMonitoringPage from "../pages/AdminMonitoringPage";
 
 const AdminRoutes = () => {
   return (
@@ -20,6 +23,9 @@ const AdminRoutes = () => {
         <Route path="forum/categories" element={<AdminForumCategories />} />
         <Route path="forum/threads" element={<AdminForumThreads />} />
         <Route path="forum/reports" element={<AdminForumReports />} />
+        <Route path="logs" element={<AdminLogsPage />} />
+        <Route path="settings" element={<AdminSettingsPage />} />
+        <Route path="monitoring" element={<AdminMonitoringPage />} />
       </Routes>
     </AdminRoute>
   );

@@ -306,19 +306,22 @@ const CreateThreadPage = () => {
             <VStack spacing={6} align="stretch">
               {/* Category Selection */}
               <FormControl isRequired>
-                <FormLabel>Danh mục</FormLabel>
+                <FormLabel htmlFor="category">Danh mục</FormLabel>
                 <Select
+                  id="category"
                   name="categoryId"
+                  placeholder="Chọn danh mục"
                   value={formData.categoryId}
                   onChange={handleInputChange}
-                  placeholder="Chọn danh mục..."
-                  isDisabled={categoriesLoading}
+                  isDisabled={!!categorySlugFromUrl}
+                  icon={<FiList />}
                 >
-                  {categories.map((category) => (
-                    <option key={category._id} value={category._id}>
-                      {category.name}
-                    </option>
-                  ))}
+                  {!categoriesLoading &&
+                    categories.map((cat) => (
+                      <option key={cat._id} value={cat._id}>
+                        {cat.name}
+                      </option>
+                    ))}
                 </Select>
               </FormControl>
 
