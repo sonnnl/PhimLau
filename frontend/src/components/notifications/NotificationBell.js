@@ -14,7 +14,6 @@ import {
   Badge,
   Button,
   Divider,
-  Avatar,
   useToast,
   Spinner,
   Center,
@@ -28,7 +27,6 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   getNotificationIcon,
-  getNotificationColor,
 } from "../../services/notificationService";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -151,8 +149,16 @@ const NotificationBell = () => {
             icon={<FiBell />}
             variant="ghost"
             size="md"
+            color="text.primary"
             aria-label="Thông báo"
-            _hover={{ bg: "gray.100" }}
+            _hover={{
+              bg: "brand.800",
+              color: "brand.accent",
+            }}
+            _active={{
+              bg: "brand.700",
+              color: "brand.accent",
+            }}
           />
           {unreadCount > 0 && (
             <Badge

@@ -24,12 +24,25 @@ import {
 import movieService from "../services/movieService";
 import { useAuth } from "../contexts/AuthContext";
 import favoriteService from "../services/favoriteService";
+import { reportWatchEvent } from "../services/watchSessionService";
 
 // Import custom components
 import VideoPlayer from "../components/movie-detail/VideoPlayer";
 import EpisodeList from "../components/movie-detail/EpisodeList";
 import MovieInfo from "../components/movie-detail/MovieInfo";
 import ReviewSection from "../components/movie-detail/ReviewSection";
+
+// Helper function to determine if a movie is a single-part movie (phim lẻ)
+const isSingleMovie = (movieData) => {
+  if (!movieData || !movieData.episodes || movieData.episodes.length === 0) {
+    // Nếu không có episodes, không thể xác định, coi như không phải
+    return false;
+  }
+  // Trả về true nếu TẤT CẢ các server đều chỉ có 1 tập phim
+  return movieData.episodes.every(
+    (server) => server.server_data && server.server_data.length === 1
+  );
+};
 
 const MovieDetailPage = () => {
   const { slug } = useParams();
@@ -90,6 +103,14 @@ const MovieDetailPage = () => {
   // Handle episode selection
   const handleEpisodeSelect = (episode) => {
     setCurrentEpisode(episode);
+
+    // Báo cáo sự kiện xem phim (fire-and-forget)
+    if (user && movieDetails?.movie?._id && episode?.slug) {
+      const serverName =
+        movieDetails.episodes[selectedServerIndex]?.server_name;
+      reportWatchEvent(movieDetails.movie._id, episode.slug, serverName);
+    }
+
     setTimeout(() => {
       playerRef.current?.scrollIntoView({
         behavior: "smooth",
@@ -110,51 +131,69 @@ const MovieDetailPage = () => {
         const data = await movieService.getMovieDetails(slug);
         setMovieDetails(data);
 
-        // Restore watch state from localStorage
-        let lastState = null;
-        try {
-          const storedState = localStorage.getItem(
-            `myMovieApp_watch_state_${slug}`
-          );
-          if (storedState) {
-            lastState = JSON.parse(storedState);
+        // -- LOGIC MỚI CHO PHIM LẺ --
+        // Tự động báo cáo và phát phim lẻ ngay khi tải xong
+        if (user && isSingleMovie(data)) {
+          const firstServer = data.episodes[0];
+          const singleEpisode = firstServer?.server_data[0];
+
+          if (singleEpisode) {
+            // Tự động báo cáo sự kiện xem
+            reportWatchEvent(
+              data.movie._id,
+              singleEpisode.slug,
+              firstServer.server_name
+            );
+            // Tự động chọn tập để phát
+            setCurrentEpisode(singleEpisode);
           }
-        } catch (e) {
-          console.error("Error reading watch state from localStorage:", e);
-          localStorage.removeItem(`myMovieApp_watch_state_${slug}`);
-        }
-
-        // Set initial server and episode
-        if (data && data.episodes && data.episodes.length > 0) {
-          let serverToSelect = 0;
-          let episodeToSelect = null;
-
-          // Use stored state if available
-          if (
-            lastState &&
-            lastState.serverIndex !== undefined &&
-            data.episodes[lastState.serverIndex]
-          ) {
-            serverToSelect = lastState.serverIndex;
+        } else {
+          // Logic cũ cho phim bộ: khôi phục trạng thái đã lưu
+          let lastState = null;
+          try {
+            const storedState = localStorage.getItem(
+              `myMovieApp_watch_state_${slug}`
+            );
+            if (storedState) {
+              lastState = JSON.parse(storedState);
+            }
+          } catch (e) {
+            console.error("Error reading watch state from localStorage:", e);
+            localStorage.removeItem(`myMovieApp_watch_state_${slug}`);
           }
 
-          const selectedServerData = data.episodes[serverToSelect]?.server_data;
+          // Set initial server and episode
+          if (data && data.episodes && data.episodes.length > 0) {
+            let serverToSelect = 0;
+            let episodeToSelect = null;
 
-          if (selectedServerData && selectedServerData.length > 0) {
-            episodeToSelect = selectedServerData[0];
+            // Use stored state if available
+            if (
+              lastState &&
+              lastState.serverIndex !== undefined &&
+              data.episodes[lastState.serverIndex]
+            ) {
+              serverToSelect = lastState.serverIndex;
+            }
 
-            if (lastState && lastState.episodeSlug) {
-              const foundEpisode = selectedServerData.find(
-                (ep) => ep.slug === lastState.episodeSlug
-              );
-              if (foundEpisode) {
-                episodeToSelect = foundEpisode;
+            const selectedServerData =
+              data.episodes[serverToSelect]?.server_data;
+
+            if (selectedServerData && selectedServerData.length > 0) {
+              episodeToSelect = selectedServerData[0];
+
+              if (lastState && lastState.episodeSlug) {
+                const foundEpisode = selectedServerData.find(
+                  (ep) => ep.slug === lastState.episodeSlug
+                );
+                if (foundEpisode) {
+                  episodeToSelect = foundEpisode;
+                }
               }
             }
+            setSelectedServerIndex(serverToSelect);
+            setCurrentEpisode(episodeToSelect);
           }
-
-          setSelectedServerIndex(serverToSelect);
-          setCurrentEpisode(episodeToSelect);
         }
 
         // Handle trailer

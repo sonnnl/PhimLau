@@ -11,7 +11,7 @@ import {
   Icon,
   Button,
 } from "@chakra-ui/react";
-import { FaStar, FaRegStar, FaHeart } from "react-icons/fa";
+import { FaStar, FaRegStar, FaHeart, FaEye } from "react-icons/fa";
 import { Link as RouterLink } from "react-router-dom";
 import Rating from "react-rating";
 
@@ -61,17 +61,37 @@ const MovieInfo = ({
         <InfoRow label="Tên khác">{movie.origin_name}</InfoRow>
         <InfoRow label="Năm">{movie.year}</InfoRow>
         <InfoRow label="Trạng thái">{movie.episode_current}</InfoRow>
+        {movieMetadata?.appTotalViews > 0 && (
+          <InfoRow label="Lượt xem">
+            <HStack spacing={1}>
+              <Icon as={FaEye} color="whiteAlpha.700" />
+              <Text>
+                {new Intl.NumberFormat().format(movieMetadata.appTotalViews)}
+              </Text>
+            </HStack>
+          </InfoRow>
+        )}
         <InfoRow label="Thời lượng">{movie.time}</InfoRow>
         <InfoRow label="Đạo diễn" isLink>
-          {movie.director?.map((d) => (
-            <Tag key={d} size="sm" variant="outline" colorScheme="cyan">
+          {movie.director?.map((d, index) => (
+            <Tag
+              key={`${d}-${index}`}
+              size="sm"
+              variant="outline"
+              colorScheme="cyan"
+            >
               {d}
             </Tag>
           ))}
         </InfoRow>
         <InfoRow label="Diễn viên" isLink>
-          {movie.actor?.map((a) => (
-            <Tag key={a} size="sm" variant="outline" colorScheme="purple">
+          {movie.actor?.map((a, index) => (
+            <Tag
+              key={`${a}-${index}`}
+              size="sm"
+              variant="outline"
+              colorScheme="purple"
+            >
               {a}
             </Tag>
           ))}
@@ -81,7 +101,7 @@ const MovieInfo = ({
             <Tag
               as={RouterLink}
               to={`/genres/${cat.slug}`}
-              key={cat.id}
+              key={cat.slug}
               size="sm"
               variant="solid"
               colorScheme="orange"
@@ -96,7 +116,7 @@ const MovieInfo = ({
             <Tag
               as={RouterLink}
               to={`/countries/${c.slug}`}
-              key={c.id}
+              key={c.slug}
               size="sm"
               variant="solid"
               colorScheme="teal"
