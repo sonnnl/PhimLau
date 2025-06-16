@@ -207,6 +207,40 @@ const resolveReportAndRequestEdit = async (reportId, reason) => {
   }
 };
 
+// ================================
+// REVIEW MANAGEMENT SERVICES
+// ================================
+export const getAllReviews = async (params = {}) => {
+  try {
+    const response = await adminAPI.get("/reviews", { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Lỗi khi lấy danh sách đánh giá"
+    );
+  }
+};
+
+export const deleteReview = async (reviewId) => {
+  try {
+    const response = await adminAPI.delete(`/reviews/${reviewId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Lỗi khi xóa đánh giá");
+  }
+};
+
+export const updateReview = async (reviewId, reviewData) => {
+  try {
+    const response = await adminAPI.put(`/reviews/${reviewId}`, reviewData);
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Lỗi khi cập nhật đánh giá"
+    );
+  }
+};
+
 // Export default object với tất cả services
 export default {
   // Dashboard
@@ -230,4 +264,9 @@ export default {
   // New functions
   resolveReportAndDelete,
   resolveReportAndRequestEdit,
+
+  // Review Management
+  getAllReviews,
+  deleteReview,
+  updateReview,
 };

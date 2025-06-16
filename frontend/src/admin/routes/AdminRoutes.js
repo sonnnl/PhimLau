@@ -7,6 +7,7 @@ import AdminNotifications from "../pages/AdminNotifications";
 import AdminForumCategories from "../pages/AdminForumCategories";
 import AdminForumThreads from "../pages/AdminForumThreads";
 import AdminForumReports from "../pages/AdminForumReports";
+import AdminReviews from "../pages/AdminReviews";
 
 const AdminRoutes = () => {
   return (
@@ -14,6 +15,7 @@ const AdminRoutes = () => {
       <Routes>
         <Route path="/" element={<AdminDashboard />} />
         <Route path="users" element={<AdminUsers />} />
+        <Route path="reviews" element={<AdminReviews />} />
         <Route path="notifications" element={<AdminNotifications />} />
         <Route path="forum/categories" element={<AdminForumCategories />} />
         <Route path="forum/threads" element={<AdminForumThreads />} />

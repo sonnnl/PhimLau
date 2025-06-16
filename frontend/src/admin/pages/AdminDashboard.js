@@ -237,20 +237,21 @@ const AdminDashboard = () => {
 
           <AdminActionCard
             title="⭐ Quản lý Reviews"
-            description="Moderation đánh giá phim và spam detection"
+            description="Moderation đánh giá phim và bình luận"
             icon={FiStar}
             color="orange"
             actions={[
               {
-                label: "Review moderation",
+                label: "Danh sách đánh giá",
                 link: "/admin/reviews",
                 icon: FiStar,
               },
-              {
-                label: "Báo cáo spam",
-                link: "/admin/reviews/reports",
-                icon: FiShield,
-              },
+              // Future actions can be added here
+              // {
+              //   label: "Báo cáo spam",
+              //   link: "/admin/reviews/reports",
+              //   icon: FiAlertTriangle,
+              // },
             ]}
           />
 

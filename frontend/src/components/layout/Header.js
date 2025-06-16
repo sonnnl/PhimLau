@@ -29,6 +29,14 @@ import React, { useContext, useState, useEffect, useRef } from "react";
 import { AuthContext } from "../../contexts/AuthContext";
 import GenreDropdown from "../GenreDropdown";
 import NotificationBell from "../notifications/NotificationBell";
+import {
+  FiGrid,
+  FiUsers,
+  FiMessageSquare,
+  FiBell,
+  FiSettings,
+  FiStar,
+} from "react-icons/fi";
 
 // Thay thế bằng logo thực của bạn trong thư mục frontend/src/assets/logo.png
 const Logo = () => (
@@ -330,7 +338,7 @@ export default function Header() {
                               w="full"
                               variant="ghost"
                               justifyContent="flex-start"
-                              leftIcon={<Text fontSize="16px">🛡️</Text>}
+                              leftIcon={<FiSettings />}
                               _hover={{ bg: "red.800", color: "red.300" }}
                               py={3}
                               fontSize="sm"
@@ -338,7 +346,7 @@ export default function Header() {
                               borderRadius="lg"
                               color="red.400"
                             >
-                              <Text ml={2}>Admin Panel</Text>
+                              <Text ml={2}>Bảng điều khiển Admin</Text>
                             </Button>
                           </>
                         )}
