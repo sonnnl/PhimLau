@@ -96,7 +96,21 @@ const getMyFavorites = asyncHandler(async (req, res) => {
   const totalFavorites = await UserFavorite.countDocuments({ user: userId });
 
   res.status(200).json({
-    items: favorites.map((fav) => fav.movie), // Chỉ trả về mảng các movie object
+    items: favorites.map((fav) => ({
+      // Ánh xạ dữ liệu để khớp với cấu trúc của ForumMovieCard
+      movieId: fav.movie._id,
+      movieSlug: fav.movie.slug,
+      movieTitle: fav.movie.name,
+      moviePosterUrl: fav.movie.posterUrl || fav.movie.thumbUrl,
+      movieType: fav.movie.type,
+      movieYear: fav.movie.year,
+      isPrimary: false, // Mặc định, có thể thay đổi nếu có logic
+      appAverageRating: fav.movie.appAverageRating,
+      appRatingCount: fav.movie.appRatingCount,
+      appTotalViews: fav.movie.appTotalViews,
+      appTotalFavorites: fav.movie.appTotalFavorites,
+      _id: fav._id, // Giữ lại ID của bản ghi favorite
+    })),
     pagination: {
       currentPage: page,
       totalPages: Math.ceil(totalFavorites / limit),

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import favoriteService from "../services/favoriteService";
-import MovieCard from "../components/MovieCard";
+import ForumMovieCard from "../components/forum/ForumMovieCard";
 import {
   Container,
   Heading,
@@ -119,7 +119,11 @@ const FavoriteMoviesPage = () => {
             spacing={{ base: 4, md: 6 }}
           >
             {movies.map((movie) => (
-              <MovieCard key={movie._id || movie.slug} movie={movie} />
+              <ForumMovieCard
+                key={movie.movieId}
+                movieMetadata={movie}
+                showPrimaryBadge={true}
+              />
             ))}
           </SimpleGrid>
 

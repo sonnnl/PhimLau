@@ -146,11 +146,6 @@ const ForumMovieCard = ({ movieMetadata, showPrimaryBadge = true }) => {
             src={imageUrl}
             alt={movieMetadata.movieTitle}
             objectFit="cover"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src =
-                "https://via.placeholder.com/300x450/e2e8f0/718096?text=Image+Error";
-            }}
           />
         </AspectRatio>
 
