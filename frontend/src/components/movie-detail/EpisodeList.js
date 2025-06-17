@@ -17,6 +17,7 @@ const EpisodeList = ({
   currentEpisode,
   handleServerChange,
   handleEpisodeSelect,
+  watchedEpisodes,
 }) => {
   const currentServerEpisodes =
     availableServers[selectedServerIndex]?.server_data || [];
@@ -92,16 +93,32 @@ const EpisodeList = ({
         <VStack spacing={2} align="stretch">
           {currentServerEpisodes.map((ep, idx) => {
             const isActive =
-              currentEpisode &&
-              currentEpisode.slug === ep.slug &&
-              currentEpisode.name === ep.name;
+              currentEpisode?.slug === ep.slug &&
+              currentEpisode?.name === ep.name;
+            const isWatched = watchedEpisodes?.has(ep.slug);
+
+            // Xác định style cho button
+            let buttonVariant = "outline";
+            let buttonColorScheme = "gray";
+            let fontWeight = "normal";
+
+            if (isActive) {
+              buttonVariant = "solid";
+              buttonColorScheme = "orange";
+              fontWeight = "bold";
+            } else if (isWatched) {
+              buttonVariant = "solid"; // Hiển thị 'solid' cho tập đã xem
+              buttonColorScheme = "gray"; // Màu 'gray' để phân biệt với tập đang active
+              fontWeight = "bold"; // Tô đậm chữ
+            }
 
             return (
               <Button
                 key={ep.slug || `${ep.name}-${idx}`}
                 onClick={() => handleEpisodeSelect(ep)}
-                variant={isActive ? "solid" : "outline"}
-                colorScheme={isActive ? "orange" : "gray"}
+                variant={buttonVariant}
+                colorScheme={buttonColorScheme}
+                fontWeight={fontWeight} // Áp dụng fontWeight
                 justifyContent="flex-start"
                 isFullWidth
                 size="sm"
@@ -109,6 +126,7 @@ const EpisodeList = ({
                 whiteSpace="normal"
                 height="auto"
                 py={2}
+                opacity={isActive ? 1 : isWatched ? 0.7 : 1} // Giảm độ mờ cho tập đã xem
                 _hover={{
                   bg: isActive ? "orange.600" : "brand.800",
                   borderColor: isActive ? "orange.600" : "brand.accent",

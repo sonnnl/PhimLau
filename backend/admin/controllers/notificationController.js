@@ -195,6 +195,7 @@ const getAllNotifications = asyncHandler(async (req, res) => {
 export const createModerationNotification = async ({
   userId,
   threadId,
+  threadSlug,
   threadTitle,
   status,
   note,
@@ -230,7 +231,7 @@ export const createModerationNotification = async ({
       type: messageData.type,
       title: messageData.title,
       message: messageData.message,
-      actionUrl: status === "approved" ? `/forum/thread/${threadId}` : null,
+      actionUrl: status === "approved" ? `/forum/thread/${threadSlug}` : null,
       relatedData: {
         threadId,
       },

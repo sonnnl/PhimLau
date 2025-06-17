@@ -22,9 +22,9 @@ import {
   Badge,
   Heading,
 } from "@chakra-ui/react";
-import { HamburgerIcon, CloseIcon, SearchIcon } from "@chakra-ui/icons";
+import { HamburgerIcon, CloseIcon, SearchIcon, Image } from "@chakra-ui/icons";
 import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom";
-import React, { useContext, useState, useEffect, useRef } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import { AuthContext } from "../../contexts/AuthContext";
 import GenreDropdown from "../GenreDropdown";
 import NotificationBell from "../notifications/NotificationBell";
@@ -40,13 +40,24 @@ import {
 // Thay thế bằng logo thực của bạn trong thư mục frontend/src/assets/logo.png
 const Logo = () => (
   <RouterLink to="/">
-    {/* <Image src="/assets/logo.png" alt="My Movie App Logo" h={{ base: "30px", md: "40px" }} /> */}
-    <Heading size={{ base: "sm", md: "md" }} color="text.primary">
-      MyMovieApp
-    </Heading>
+    <Flex align="center" gap={3}>
+      <Image
+        src={"/assets/logo.png"}
+        alt="FilmKoMoiLogo"
+        boxSize={{ base: "32px", md: "40px" }}
+        objectFit="contain"
+      />
+      <Text
+        fontSize={{ base: "lg", md: "2xl" }}
+        fontWeight="bold"
+        color="white.500"
+        letterSpacing="wide"
+      >
+        PKM
+      </Text>
+    </Flex>
   </RouterLink>
 );
-
 const NavLink = ({ children, to }) => (
   <ChakraLink
     as={RouterLink}

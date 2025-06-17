@@ -93,55 +93,110 @@ export const reportWatchEvent = asyncHandler(async (req, res) => {
     });
   }
 
+  const filter = {
+    user: userId,
+    movie: movieId,
+    // Sử dụng `episodeSlug ?? null` để `''` (chuỗi rỗng) không bị chuyển thành `null`
+    episodeSlug: episodeSlug ?? null,
+  };
+
   try {
-    const filter = {
-      user: userId,
-      movie: movieId,
-      episodeSlug: episodeSlug || null,
-    };
-
-    const existingSession = await WatchSession.findOne(filter);
-
-    if (existingSession) {
-      existingSession.lastWatchedAt = new Date();
-      await existingSession.save();
-      return res.status(200).json({
-        success: true,
-        message: "Cập nhật lịch sử xem thành công.",
-        data: existingSession,
-      });
-    }
-
-    // Đây là lần đầu người dùng xem tập này -> Tạo lịch sử MỚI và TÍNH VIEW
+    // Cố gắng tạo một session mới trước tiên.
+    // Nếu thành công, điều đó có nghĩa là người dùng lần đầu xem tập này.
     const newSession = await WatchSession.create({
-      user: userId,
-      movie: movieId,
-      episodeSlug: episodeSlug || null,
+      ...filter,
       serverName: serverName,
     });
 
-    // Tăng lượt xem cho phim
+    // Chỉ tăng lượt xem khi một session mới được tạo thành công.
     await MovieMetadata.updateOne(
       { _id: movieId },
       { $inc: { appTotalViews: 1 } }
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Lịch sử xem đã được tạo và lượt xem đã được tính.",
       data: newSession,
     });
   } catch (error) {
+    // Nếu lỗi có mã 11000, điều đó có nghĩa là đã có một bản ghi tồn tại (lỗi khóa trùng lặp).
+    // Điều này có thể xảy ra trong hoạt động bình thường (người dùng xem lại) hoặc do race condition.
     if (error.code === 11000) {
-      return res.status(200).json({
-        success: true,
-        message: "Lịch sử xem đã tồn tại.",
-      });
+      try {
+        // Tìm bản ghi hiện có và cập nhật nó.
+        const existingSession = await WatchSession.findOne(filter);
+        if (existingSession) {
+          existingSession.lastWatchedAt = new Date();
+          if (serverName) {
+            existingSession.serverName = serverName;
+          }
+          await existingSession.save();
+          return res.status(200).json({
+            success: true,
+            message: "Cập nhật lịch sử xem thành công.",
+            data: existingSession,
+          });
+        }
+        // Nếu không tìm thấy (trường hợp hiếm), báo lỗi server.
+        return res.status(500).json({
+          success: false,
+          message: "Lỗi không nhất quán khi cập nhật lịch sử.",
+        });
+      } catch (updateError) {
+        console.error(
+          "Error updating watch session after duplicate key:",
+          updateError
+        );
+        return res.status(500).json({
+          success: false,
+          message: "Lỗi server khi cập nhật lịch sử xem.",
+        });
+      }
     }
+
+    // Xử lý các lỗi không mong muốn khác.
     console.error("Report watch event error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Lỗi server khi báo cáo sự kiện xem.",
+    });
+  }
+});
+
+// @desc    Get watched episode slugs for a specific movie
+// @route   GET /api/watch-history/status/:movieId
+// @access  Private
+export const getMovieWatchStatus = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const { movieId } = req.params;
+
+  if (!movieId) {
+    return res.status(400).json({
+      success: false,
+      message: "Thiếu thông tin movieId",
+    });
+  }
+
+  try {
+    const sessions = await WatchSession.find({
+      user: userId,
+      movie: movieId,
+    })
+      .select("episodeSlug -_id")
+      .lean();
+
+    const watchedSlugs = sessions.map((session) => session.episodeSlug);
+
+    res.status(200).json({
+      success: true,
+      data: watchedSlugs,
+    });
+  } catch (error) {
+    console.error("Get movie watch status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy trạng thái xem phim.",
     });
   }
 });

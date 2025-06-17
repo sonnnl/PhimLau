@@ -308,6 +308,7 @@ export const moderateThread = asyncHandler(async (req, res) => {
       await createModerationNotification({
         userId: thread.author._id,
         threadId: thread._id,
+        threadSlug: thread.slug,
         threadTitle: thread.title,
         status,
         note: note || "",
@@ -584,6 +585,7 @@ export const moderateReply = asyncHandler(async (req, res) => {
       await createModerationNotification({
         userId: reply.author._id,
         threadId: reply.thread._id,
+        threadSlug: reply.thread.slug,
         threadTitle: `Trả lời trong "${reply.thread.title}"`,
         status,
         note: note || "",

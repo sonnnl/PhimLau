@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 /**
- * 🎯 Custom hook để debounce một giá trị
+ * Custom hook để debounce một giá trị
  * @param {any} value - Giá trị cần debounce
  * @param {number} delay - Thời gian delay (milliseconds)
  * @returns {any} Giá trị đã được debounce

@@ -24,7 +24,10 @@ import {
 import movieService from "../services/movieService";
 import { useAuth } from "../contexts/AuthContext";
 import favoriteService from "../services/favoriteService";
-import { reportWatchEvent } from "../services/watchSessionService";
+import {
+  reportWatchEvent,
+  getMovieWatchStatus,
+} from "../services/watchSessionService";
 
 // Import custom components
 import VideoPlayer from "../components/movie-detail/VideoPlayer";
@@ -62,6 +65,9 @@ const MovieDetailPage = () => {
   const [selectedServerIndex, setSelectedServerIndex] = useState(0);
   const [currentEpisode, setCurrentEpisode] = useState(null);
   const playerRef = useRef(null);
+
+  // Watched episodes state
+  const [watchedEpisodes, setWatchedEpisodes] = useState(new Set());
 
   // Trailer states
   const [showTrailer, setShowTrailer] = useState(false);
@@ -103,13 +109,6 @@ const MovieDetailPage = () => {
   // Handle episode selection
   const handleEpisodeSelect = (episode) => {
     setCurrentEpisode(episode);
-
-    // Báo cáo sự kiện xem phim (fire-and-forget)
-    if (user && movieDetails?.movie?._id && episode?.slug) {
-      const serverName =
-        movieDetails.episodes[selectedServerIndex]?.server_name;
-      reportWatchEvent(movieDetails.movie._id, episode.slug, serverName);
-    }
 
     setTimeout(() => {
       playerRef.current?.scrollIntoView({
@@ -246,6 +245,39 @@ const MovieDetailPage = () => {
     checkStatus();
   }, [isAuthenticated, movieDetails]);
 
+  // -- NEW useEffect to fetch watch status --
+  useEffect(() => {
+    const fetchWatchStatus = async () => {
+      // Chỉ fetch khi đã đăng nhập và có movie id
+      if (isAuthenticated && movieDetails?.movie?._id) {
+        const response = await getMovieWatchStatus(movieDetails.movie._id);
+        if (response.success && Array.isArray(response.data)) {
+          setWatchedEpisodes(new Set(response.data));
+        }
+      }
+    };
+
+    fetchWatchStatus();
+  }, [isAuthenticated, movieDetails]);
+
+  // -- useEffect to report watch event when currentEpisode changes --
+  useEffect(() => {
+    // Chỉ báo cáo khi có người dùng, thông tin phim và tập phim hiện tại
+    if (user && movieDetails?.movie?._id && currentEpisode?.slug) {
+      // Bỏ qua nếu là phim lẻ VÀ đã tự động báo cáo lúc tải
+      // Điều này tránh báo cáo trùng lặp cho phim lẻ
+      if (isSingleMovie(movieDetails)) {
+        return;
+      }
+
+      const serverName =
+        movieDetails.episodes[selectedServerIndex]?.server_name;
+      reportWatchEvent(movieDetails.movie._id, currentEpisode.slug, serverName);
+      // Cập nhật lại state đã xem để giao diện thay đổi ngay lập tức
+      setWatchedEpisodes((prev) => new Set(prev).add(currentEpisode.slug));
+    }
+  }, [user, movieDetails, currentEpisode, selectedServerIndex]);
+
   // Handle favorite button toggle
   const handleToggleFavorite = async () => {
     if (!isAuthenticated || !movieDetails?.movie?._id) {
@@ -380,6 +412,7 @@ const MovieDetailPage = () => {
           currentEpisode={currentEpisode}
           handleServerChange={handleServerChange}
           handleEpisodeSelect={handleEpisodeSelect}
+          watchedEpisodes={watchedEpisodes}
         />
       </SimpleGrid>
 

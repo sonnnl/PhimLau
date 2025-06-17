@@ -78,3 +78,27 @@ export const reportWatchEvent = async (movieId, episodeSlug, serverName) => {
     return { success: false };
   }
 };
+
+/**
+ * Lấy danh sách các slug tập phim đã xem cho một phim cụ thể
+ * @param {string} movieId
+ */
+export const getMovieWatchStatus = async (movieId) => {
+  // Không gửi yêu cầu nếu không có movieId hoặc không có token
+  const token = localStorage.getItem("movieAppToken");
+  if (!movieId || !token) {
+    return { success: true, data: [] };
+  }
+
+  try {
+    const response = await axios.get(
+      `${API_URL}/watch-history/status/${movieId}`,
+      getAuthConfig()
+    );
+    return response.data; // Should be { success: true, data: ['slug1', 'slug2'] }
+  } catch (error) {
+    console.error("Error fetching movie watch status:", error);
+    // Lỗi có thể xảy ra nếu người dùng chưa đăng nhập, không cần báo cáo
+    return { success: false, data: [] };
+  }
+};

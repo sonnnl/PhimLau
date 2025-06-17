@@ -3,6 +3,7 @@ import {
   getWatchHistory,
   deleteWatchSession,
   reportWatchEvent,
+  getMovieWatchStatus,
 } from "../controllers/watchHistoryController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -25,5 +26,10 @@ router.post("/report", reportWatchEvent);
 // @route   DELETE /api/watch-history/:id
 // @access  Private
 router.delete("/:id", deleteWatchSession);
+
+// @desc    Get watched episodes for a specific movie
+// @route   GET /api/watch-history/status/:movieId
+// @access  Private
+router.get("/status/:movieId", getMovieWatchStatus);
 
 export default router;

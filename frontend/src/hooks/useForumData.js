@@ -22,7 +22,7 @@ export const useForumCategories = () => {
       setCategories(data);
     } catch (err) {
       setError(err.message || "Không thể tải danh mục diễn đàn.");
-      console.error("❌ Error fetching forum categories:", err);
+      console.error("Error fetching forum categories:", err);
     } finally {
       setLoading(false);
     }
@@ -86,7 +86,7 @@ export const useForumThreads = (categorySlug, initialPage = 1) => {
         }
       } catch (err) {
         setError(err.message || "Không thể tải danh sách chủ đề.");
-        console.error("❌ Error fetching forum threads:", err);
+        console.error("Error fetching forum threads:", err);
       } finally {
         setLoading(false);
       }
