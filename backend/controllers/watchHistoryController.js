@@ -2,10 +2,10 @@ import asyncHandler from "express-async-handler";
 import WatchSession from "../models/WatchSessionModel.js";
 import MovieMetadata from "../models/MovieMetadataModel.js";
 
-// @desc    Get user's continue watching list with pagination
-// @route   GET /api/continue-watching
+// @desc    Get user's watch history with pagination
+// @route   GET /api/watch-history
 // @access  Private
-export const getContinueWatching = asyncHandler(async (req, res) => {
+export const getWatchHistory = asyncHandler(async (req, res) => {
   try {
     const userId = req.user._id;
     const page = parseInt(req.query.page, 10) || 1;
@@ -36,16 +36,16 @@ export const getContinueWatching = asyncHandler(async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get continue watching list error:", error);
+    console.error("Get watch history error:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi server khi lấy danh sách đang xem",
+      message: "Lỗi server khi lấy lịch sử xem",
     });
   }
 });
 
 // @desc    Delete a watch session from history
-// @route   DELETE /api/continue-watching/:id
+// @route   DELETE /api/watch-history/:id
 // @access  Private
 export const deleteWatchSession = asyncHandler(async (req, res) => {
   const userId = req.user._id;
@@ -80,7 +80,7 @@ export const deleteWatchSession = asyncHandler(async (req, res) => {
 });
 
 // @desc    Report a watch event for a movie episode (create or update session)
-// @route   POST /api/continue-watching/report
+// @route   POST /api/watch-history/report
 // @access  Private
 export const reportWatchEvent = asyncHandler(async (req, res) => {
   const userId = req.user._id;

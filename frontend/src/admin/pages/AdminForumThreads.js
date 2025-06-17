@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout";
 import {
   Box,
-  Heading,
   Table,
   Thead,
   Tbody,
@@ -35,7 +34,6 @@ import {
   VStack,
   Text,
   Select,
-  Container,
   Spinner,
   Center,
   Button,
@@ -50,7 +48,6 @@ import {
   FiUnlock,
   FiBookmark,
   FiTrash2,
-  FiMessageSquare,
   FiCheck,
   FiRefreshCw,
 } from "react-icons/fi";
@@ -92,10 +89,7 @@ const AdminForumThreads = () => {
   const cancelRef = React.useRef();
 
   // Theme colors
-  const bg = useColorModeValue("gray.50", "gray.900");
   const cardBg = useColorModeValue("white", "gray.800");
-  const textColor = useColorModeValue("gray.800", "white");
-  const secondaryTextColor = useColorModeValue("gray.600", "gray.400");
   const tableHeaderBg = useColorModeValue("gray.50", "gray.700");
   const tableHeaderColor = useColorModeValue("gray.700", "gray.300");
 

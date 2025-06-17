@@ -13,19 +13,19 @@ const getAuthConfig = () => {
 };
 
 /**
- * Lấy danh sách phim đang xem dở của người dùng
+ * Lấy lịch sử xem phim của người dùng
  * @param {number} page
  * @param {number} limit
  */
-export const getContinueWatching = async (page = 1, limit = 18) => {
+export const getWatchHistory = async (page = 1, limit = 18) => {
   try {
     const response = await axios.get(
-      `${API_URL}/continue-watching?page=${page}&limit=${limit}`,
+      `${API_URL}/watch-history?page=${page}&limit=${limit}`,
       getAuthConfig()
     );
     return response.data;
   } catch (error) {
-    console.error("Error fetching continue watching list:", error);
+    console.error("Error fetching watch history:", error);
     return {
       success: false,
       message: error.response?.data?.message || "Lỗi kết nối server",
@@ -40,7 +40,7 @@ export const getContinueWatching = async (page = 1, limit = 18) => {
 export const deleteWatchSession = async (sessionId) => {
   try {
     const response = await axios.delete(
-      `${API_URL}/continue-watching/${sessionId}`,
+      `${API_URL}/watch-history/${sessionId}`,
       getAuthConfig()
     );
     return response.data;
@@ -64,7 +64,7 @@ export const reportWatchEvent = async (movieId, episodeSlug, serverName) => {
     const payload = { movieId, episodeSlug, serverName };
     // Lời gọi fire-and-forget, không cần xử lý kết quả
     await axios.post(
-      `${API_URL}/continue-watching/report`,
+      `${API_URL}/watch-history/report`,
       payload,
       getAuthConfig()
     );

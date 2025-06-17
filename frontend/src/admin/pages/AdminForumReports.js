@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout";
 import {
   Box,
-  Heading,
   Table,
   Thead,
   Tbody,
@@ -29,12 +28,10 @@ import {
   VStack,
   Text,
   Select,
-  Container,
   Spinner,
   Center,
   Button,
   Avatar,
-  Link,
   Tooltip,
   useColorModeValue,
   AlertDialog,
@@ -48,7 +45,6 @@ import {
   InputGroup,
   InputLeftElement,
   Checkbox,
-  Stack,
   Divider,
   Card,
   CardBody,
@@ -62,17 +58,13 @@ import {
 import {
   FiAlertTriangle,
   FiCheck,
-  FiX,
   FiEye,
   FiTrash2,
   FiRefreshCw,
   FiSearch,
-  FiFilter,
-  FiDownload,
-  FiUserX,
-  FiMessageSquare,
   FiClock,
-  FiUser,
+  FiFilter,
+  FiMessageSquare,
   FiShield,
   FiEdit,
 } from "react-icons/fi";
@@ -141,7 +133,6 @@ const AdminForumReports = () => {
   const toast = useToast();
 
   // Theme colors - All hooks must be at the top level
-  const bg = useColorModeValue("gray.50", "gray.900");
   const secondaryTextColor = useColorModeValue("gray.600", "gray.400");
   const tableHeaderBg = useColorModeValue("gray.50", "gray.700");
   const tableHoverBg = useColorModeValue("gray.50", "gray.700");

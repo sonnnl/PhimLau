@@ -77,20 +77,6 @@ const NavLinks = [
   { name: "Diễn Đàn", path: "/forum" },
 ];
 
-const menuItemStyles = {
-  bg: "transparent",
-  color: "text.secondary",
-  borderRadius: "lg",
-  py: 3,
-  px: 4,
-  fontSize: "sm",
-  fontWeight: "medium",
-  _hover: {
-    bg: "brand.800",
-    color: "brand.accent",
-  },
-};
-
 export default function Header() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isAuthenticated, user, logout, loading } = useContext(AuthContext);

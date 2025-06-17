@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
   Heading,
@@ -23,7 +23,7 @@ import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { ChevronRightIcon, DeleteIcon } from "@chakra-ui/icons";
 import { FaHistory } from "react-icons/fa";
 import {
-  getContinueWatching,
+  getWatchHistory,
   deleteWatchSession,
 } from "../services/watchSessionService";
 import ForumMovieCard from "../components/forum/ForumMovieCard"; // Thay thế MovieCard
@@ -36,11 +36,11 @@ const HistoryPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getContinueWatching(currentPage, 18);
+      const data = await getWatchHistory(currentPage, 18);
       if (data.success) {
         setSessions(data.data || []);
         setPagination(data.pagination || null);
@@ -57,33 +57,37 @@ const HistoryPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage]);
 
   useEffect(() => {
     fetchHistory();
-  }, [currentPage]);
+  }, [fetchHistory]);
 
-  const handleDelete = async (sessionId) => {
-    // Tìm session cần xóa và tạm thời ẩn nó đi để tăng trải nghiệm người dùng
-    const originalSessions = [...sessions];
-    setSessions(sessions.filter((s) => s._id !== sessionId));
+  const handleDelete = useCallback(
+    async (sessionId) => {
+      const originalSessions = [...sessions];
+      setSessions((currentSessions) =>
+        currentSessions.filter((s) => s._id !== sessionId)
+      );
 
-    const response = await deleteWatchSession(sessionId);
-    if (!response.success) {
-      // Nếu xóa thất bại, phục hồi lại danh sách
-      setSessions(originalSessions);
-      // Có thể thêm thông báo lỗi ở đây
-      console.error("Failed to delete session:", response.message);
-    }
-    // Nếu thành công, không cần làm gì vì session đã được ẩn
-  };
+      const response = await deleteWatchSession(sessionId);
+      if (!response.success) {
+        setSessions(originalSessions);
+        console.error("Failed to delete session:", response.message);
+      }
+    },
+    [sessions]
+  );
 
-  const handlePageChange = (newPage) => {
-    if (newPage > 0 && (!pagination || newPage <= pagination.totalPages)) {
-      setSearchParams({ page: newPage.toString() });
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
+  const handlePageChange = useCallback(
+    (newPage) => {
+      if (newPage > 0 && (!pagination || newPage <= pagination.totalPages)) {
+        setSearchParams({ page: newPage.toString() });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    },
+    [pagination, setSearchParams]
+  );
 
   return (
     <Container maxW="container.xl" py={8}>
