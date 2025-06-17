@@ -18,7 +18,6 @@ import {
   Text,
   Button,
   useColorModeValue,
-  Link as ChakraLink,
 } from "@chakra-ui/react";
 import { Link as RouterLink } from "react-router-dom";
 import {
@@ -185,7 +184,7 @@ const AdminDashboard = () => {
         {/* Action Cards */}
         <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={6}>
           <AdminActionCard
-            title="👥 Quản lý Users"
+            title="Quản lý Users"
             description="Quản lý người dùng, phân quyền và moderation"
             icon={FiUsers}
             color="blue"
@@ -195,7 +194,7 @@ const AdminDashboard = () => {
           />
 
           <AdminActionCard
-            title="💬 Quản lý Forum"
+            title="Quản lý Forum"
             description="Moderation forum threads, replies và community management"
             icon={FiMessageSquare}
             color="teal"
@@ -219,7 +218,7 @@ const AdminDashboard = () => {
           />
 
           <AdminActionCard
-            title="📢 Quản lý Thông báo"
+            title="Quản lý Thông báo"
             description="Gửi thông báo real-time cho users"
             icon={FiBell}
             color="green"
@@ -238,7 +237,7 @@ const AdminDashboard = () => {
           />
 
           <AdminActionCard
-            title="⭐ Quản lý Reviews"
+            title="Quản lý Reviews"
             description="Moderation đánh giá phim và bình luận"
             icon={FiStar}
             color="orange"
@@ -258,7 +257,7 @@ const AdminDashboard = () => {
           />
 
           <AdminActionCard
-            title="⚙️ Cấu hình Hệ thống"
+            title="Cấu hình Hệ thống"
             description="Settings, logs và monitoring hệ thống"
             icon={FiSettings}
             color="purple"
@@ -303,7 +302,7 @@ const AdminDashboard = () => {
               </Box>
               <Box textAlign="center">
                 <Text fontSize="2xl" fontWeight="bold" color="green.500">
-                  {stats.reviews?.avgRating || "N/A"}
+                  {stats.reviews?.averageRating || "N/A"}
                 </Text>
                 <Text fontSize="sm" color="gray.500">
                   Điểm đánh giá TB
@@ -327,7 +326,7 @@ const AdminDashboard = () => {
               </Box>
               <Box textAlign="center">
                 <Text fontSize="2xl" fontWeight="bold" color="purple.500">
-                  {stats.users?.admins || 0}
+                  {stats.users?.admin || 0}
                 </Text>
                 <Text fontSize="sm" color="gray.500">
                   Admins
@@ -346,9 +345,8 @@ const AdminDashboard = () => {
           borderLeftColor="blue.500"
         >
           <Text fontSize="sm" color="blue.700">
-            💡 <strong>Lưu ý:</strong> Dashboard này chỉ quản lý nghiệp vụ thực
-            tế. Phim được lấy từ API bên thứ 3 (TMDB/OMDb), không cần quản lý
-            database phim.
+            <strong>Lưu ý:</strong> Dashboard này chỉ quản lý nghiệp vụ thực tế.
+            Phim được lấy từ API bên thứ 3 (PhimAPI)
           </Text>
         </Box>
       </VStack>

@@ -36,7 +36,6 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Image,
   SimpleGrid,
 } from "@chakra-ui/react";
 import {
@@ -78,15 +77,6 @@ const formatDate = (dateString) => {
 };
 
 // 🎬 Helper function to display movie type
-const getMovieTypeDisplay = (type) => {
-  const typeMap = {
-    single: "Phim lẻ",
-    series: "Phim bộ",
-    hoathinh: "Hoạt hình",
-    tvshows: "TV Shows",
-  };
-  return typeMap[type] || type || "N/A";
-};
 
 const Pagination = ({ currentPage, totalPages, onPageChange, baseName }) => {
   if (totalPages <= 1) return null;
@@ -507,19 +497,18 @@ const ForumThreadDetailPage = () => {
 
   // Reply to reply state
   const [replyingTo, setReplyingTo] = useState(null); // { replyId, authorName }
-  const [showReplyForm, setShowReplyForm] = useState(false);
 
   const fetchThreadDetails = useCallback(
     async (pageToFetch = 1, replyLimitParam = 20) => {
-      // ✅ Add replyLimitParam parameter
+      // Add replyLimitParam parameter
       setLoading(true);
       try {
         const response = await getThreadBySlug(threadSlug, {
           page: pageToFetch,
-          limit: replyLimitParam, // ✅ Use parameter instead of hardcoded
+          limit: replyLimitParam, // Use parameter instead of hardcoded
         });
 
-        // 🔧 SAFE DATA HANDLING - Xử lý dữ liệu an toàn
+        // SAFE DATA HANDLING - Xử lý dữ liệu an toàn
         const responseData = response?.data || response || {};
 
         setThreadData({
@@ -530,7 +519,7 @@ const ForumThreadDetailPage = () => {
               currentPage: 1,
               totalPages: 0,
               totalItems: 0,
-              limit: replyLimitParam, // ✅ Use parameter
+              limit: replyLimitParam, // Use parameter
             },
           },
         });
@@ -684,7 +673,6 @@ const ForumThreadDetailPage = () => {
         reply.content.substring(0, 100) +
         (reply.content.length > 100 ? "..." : ""),
     });
-    setShowReplyForm(true);
 
     // Scroll to reply form
     setTimeout(() => {
@@ -838,14 +826,20 @@ const ForumThreadDetailPage = () => {
           </Flex>
 
           <HStack spacing={3} mb={4} fontSize="sm" color="gray.400">
-            <Avatar
-              size="sm"
-              name={thread.author?.displayName}
-              src={thread.author?.avatarUrl}
-            />
-            <Text fontWeight="bold">
+            <Link as={RouterLink} to={`/profile/${thread.author?._id}`}>
+              <Avatar
+                size="sm"
+                name={thread.author?.displayName}
+                src={thread.author?.avatarUrl}
+              />
+            </Link>
+            <Link
+              as={RouterLink}
+              to={`/profile/${thread.author?._id}`}
+              fontWeight="bold"
+            >
               {thread.author?.displayName || "Người dùng ẩn danh"}
-            </Text>
+            </Link>
             <HStack spacing={1}>
               <Icon as={FiClock} />
               <Text>{formatDate(thread.createdAt)}</Text>
@@ -914,14 +908,20 @@ const ForumThreadDetailPage = () => {
               >
                 <Flex justify="space-between" align="flex-start" mb={2}>
                   <HStack spacing={3} fontSize="sm" color="gray.400" flex="1">
-                    <Avatar
-                      size="xs"
-                      name={reply.author?.displayName}
-                      src={reply.author?.avatarUrl}
-                    />
-                    <Text fontWeight="bold">
+                    <Link as={RouterLink} to={`/profile/${reply.author?._id}`}>
+                      <Avatar
+                        size="xs"
+                        name={reply.author?.displayName}
+                        src={reply.author?.avatarUrl}
+                      />
+                    </Link>
+                    <Link
+                      as={RouterLink}
+                      to={`/profile/${reply.author?._id}`}
+                      fontWeight="bold"
+                    >
                       {reply.author?.displayName || "Người dùng ẩn danh"}
-                    </Text>
+                    </Link>
                     <Text>• {formatDate(reply.createdAt)}</Text>
                   </HStack>
 
@@ -972,9 +972,14 @@ const ForumThreadDetailPage = () => {
                   >
                     <Text fontSize="xs" color="gray.400" mb={1}>
                       Trả lời:{" "}
-                      <strong>
+                      <Link
+                        as={RouterLink}
+                        to={`/profile/${reply.parentReply.author?._id}`}
+                        fontWeight="bold"
+                        color="blue.300"
+                      >
                         {reply.parentReply.author?.displayName || "Ẩn danh"}
-                      </strong>
+                      </Link>
                     </Text>
                     <Text fontSize="sm" color="gray.300" noOfLines={2}>
                       {reply.parentReply?.isDeleted
@@ -1034,7 +1039,6 @@ const ForumThreadDetailPage = () => {
           onReplyCreated={handleReplyCreated}
           replyingTo={replyingTo}
           setReplyingTo={setReplyingTo}
-          setShowReplyForm={setShowReplyForm}
         />
       </VStack>
 

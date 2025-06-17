@@ -265,15 +265,15 @@ export const moderateThread = asyncHandler(async (req, res) => {
 
     const oldStatus = thread.moderationStatus;
 
-    // ===== 🎯 UPDATE THREAD MODERATION WITH CONSISTENCY =====
+    // ===== UPDATE THREAD MODERATION WITH CONSISTENCY =====
     thread.moderationStatus = status;
-    thread.isApproved = status === "approved"; // ✅ SYNC isApproved with moderationStatus
+    thread.isApproved = status === "approved"; // SYNC isApproved with moderationStatus
     thread.moderatedBy = req.user._id;
     thread.moderationNote = note || "";
     thread.moderatedAt = new Date();
 
-    // ===== 🛡️ VALIDATE CONSISTENCY BEFORE SAVE =====
-    console.log("🔍 Admin moderation update:", {
+    // ===== VALIDATE CONSISTENCY BEFORE SAVE =====
+    console.log("Admin moderation update:", {
       threadId: thread._id,
       oldStatus: oldStatus,
       newStatus: status,
@@ -283,7 +283,7 @@ export const moderateThread = asyncHandler(async (req, res) => {
 
     await thread.save();
 
-    // 🔥 UPDATE THREAD COUNT IN CATEGORY
+    // UPDATE THREAD COUNT IN CATEGORY
     try {
       if (oldStatus !== "approved" && status === "approved") {
         // Thread được approve lần đầu hoặc từ rejected/pending → approved
@@ -297,10 +297,10 @@ export const moderateThread = asyncHandler(async (req, res) => {
         });
       }
     } catch (categoryError) {
-      console.error("❌ Error updating category count:", categoryError);
+      console.error(" Error updating category count:", categoryError);
     }
 
-    // 🔥 SEND MODERATION NOTIFICATION TO USER
+    // SEND MODERATION NOTIFICATION TO USER
     try {
       const { createModerationNotification } = await import(
         "./notificationController.js"
@@ -315,7 +315,7 @@ export const moderateThread = asyncHandler(async (req, res) => {
       });
     } catch (notificationError) {
       console.error(
-        "❌ Error sending moderation notification:",
+        " Error sending moderation notification:",
         notificationError
       );
       // Don't fail the whole operation if notification fails
@@ -345,13 +345,13 @@ export const moderateThread = asyncHandler(async (req, res) => {
       data: populatedThread,
       message:
         status === "approved"
-          ? "✅ Bài viết đã được phê duyệt"
+          ? "Bài viết đã được phê duyệt"
           : status === "rejected"
-          ? "❌ Bài viết đã bị từ chối"
-          : "⏳ Bài viết đang chờ xét duyệt",
+          ? " Bài viết đã bị từ chối"
+          : " Bài viết đang chờ xét duyệt",
     });
   } catch (error) {
-    console.error("❌ Error in moderateThread:", error);
+    console.error(" Error in moderateThread:", error);
     res.status(500).json({
       success: false,
       message: "Lỗi server khi kiểm duyệt bài viết",
@@ -569,14 +569,14 @@ export const moderateReply = asyncHandler(async (req, res) => {
 
     await reply.save();
 
-    // 🔥 UPDATE THREAD REPLY COUNT using new method
+    // UPDATE THREAD REPLY COUNT using new method
     try {
       await reply.updateThreadCount(oldStatus, status);
     } catch (threadError) {
-      console.error("❌ Error updating thread count:", threadError);
+      console.error("Error updating thread count:", threadError);
     }
 
-    // 🔥 SEND MODERATION NOTIFICATION TO USER
+    // SEND MODERATION NOTIFICATION TO USER
     try {
       const { createModerationNotification } = await import(
         "./notificationController.js"
@@ -591,12 +591,12 @@ export const moderateReply = asyncHandler(async (req, res) => {
       });
     } catch (notificationError) {
       console.error(
-        "❌ Error sending moderation notification:",
+        "Error sending moderation notification:",
         notificationError
       );
     }
 
-    // 🔥 LOG ADMIN ACTION
+    // LOG ADMIN ACTION
     await ForumAdminLog.logAction({
       admin: req.user._id,
       action:
@@ -630,13 +630,13 @@ export const moderateReply = asyncHandler(async (req, res) => {
       data: updatedReply,
       message:
         status === "approved"
-          ? "✅ Phản hồi đã được phê duyệt"
+          ? "Phản hồi đã được phê duyệt"
           : status === "rejected"
-          ? "❌ Phản hồi đã bị từ chối"
-          : "⏳ Phản hồi đang chờ xét duyệt",
+          ? "Phản hồi đã bị từ chối"
+          : "Phản hồi đang chờ xét duyệt",
     });
   } catch (error) {
-    console.error("❌ Error in moderateReply:", error);
+    console.error("Error in moderateReply:", error);
     res.status(500).json({
       success: false,
       message: "Lỗi server khi kiểm duyệt phản hồi",
@@ -655,7 +655,7 @@ export const getAllReports = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit) || 20;
   const skip = (page - 1) * limit;
 
-  // 🔍 BUILD FILTER QUERY
+  // BUILD FILTER QUERY
   let filter = {};
 
   // Filter by status
@@ -689,7 +689,7 @@ export const getAllReports = asyncHandler(async (req, res) => {
     }
   }
 
-  // 📊 GET REPORTS WITH PAGINATION
+  // GET REPORTS WITH PAGINATION
   const reports = await ForumReport.find(filter)
     .populate("reporter", "displayName avatarUrl email")
     .populate("reviewedBy", "displayName email")
@@ -697,7 +697,7 @@ export const getAllReports = asyncHandler(async (req, res) => {
     .skip(skip)
     .limit(limit);
 
-  // 🔗 POPULATE TARGET CONTENT BASED ON REPORT TYPE
+  // POPULATE TARGET CONTENT BASED ON REPORT TYPE
   for (let report of reports) {
     if (report.reportType === "thread") {
       report.targetId = await ForumThread.findById(report.targetId)
@@ -713,7 +713,7 @@ export const getAllReports = asyncHandler(async (req, res) => {
   const totalReports = await ForumReport.countDocuments(filter);
   const totalPages = Math.ceil(totalReports / limit);
 
-  // 📈 GET STATISTICS
+  // GET STATISTICS
   const stats = await ForumReport.aggregate([
     { $match: filter },
     {
@@ -769,7 +769,7 @@ export const updateReport = asyncHandler(async (req, res) => {
     throw new Error("Không tìm thấy báo cáo");
   }
 
-  // 🔗 POPULATE TARGET CONTENT BASED ON REPORT TYPE
+  // POPULATE TARGET CONTENT BASED ON REPORT TYPE
   if (report.reportType === "thread") {
     report.targetId = await ForumThread.findById(report.targetId)
       .populate("author", "displayName avatarUrl email")
@@ -780,7 +780,7 @@ export const updateReport = asyncHandler(async (req, res) => {
       .select("content author createdAt");
   }
 
-  // 📝 SAVE BEFORE STATE FOR LOGGING
+  // SAVE BEFORE STATE FOR LOGGING
   const beforeData = {
     status: report.status,
     priority: report.priority,
@@ -788,7 +788,7 @@ export const updateReport = asyncHandler(async (req, res) => {
     actionTaken: report.actionTaken,
   };
 
-  // 🔄 UPDATE REPORT
+  // UPDATE REPORT
   if (status) report.status = status;
   if (priority) report.priority = priority;
   if (adminNote) report.adminNote = adminNote;
@@ -801,7 +801,7 @@ export const updateReport = asyncHandler(async (req, res) => {
 
   const updatedReport = await report.save();
 
-  // 🎯 APPLY ACTIONS TO TARGET CONTENT
+  // APPLY ACTIONS TO TARGET CONTENT
   if (actionTaken && actionTaken !== "none" && report.targetId) {
     try {
       await applyModerationAction(
@@ -812,11 +812,11 @@ export const updateReport = asyncHandler(async (req, res) => {
         adminNote
       );
     } catch (error) {
-      console.error("❌ Error applying moderation action:", error);
+      console.error(" Error applying moderation action:", error);
     }
   }
 
-  // 📝 LOG ADMIN ACTION
+  // LOG ADMIN ACTION
   const logAction =
     status === "resolved"
       ? "report_resolved"
@@ -840,7 +840,7 @@ export const updateReport = asyncHandler(async (req, res) => {
     updatedReport._id
   ).populate("reporter reviewedBy", "displayName email");
 
-  // 🔗 POPULATE TARGET CONTENT BASED ON REPORT TYPE
+  // POPULATE TARGET CONTENT BASED ON REPORT TYPE
   if (populatedReport.reportType === "thread") {
     populatedReport.targetId = await ForumThread.findById(
       populatedReport.targetId
@@ -888,7 +888,7 @@ export const bulkUpdateReports = asyncHandler(async (req, res) => {
     updateData
   );
 
-  // 📝 LOG BULK ACTION
+  // LOG BULK ACTION
   await ForumAdminLog.logAction({
     admin: req.user._id,
     action: "bulk_approve", // Sử dụng action có sẵn trong enum
@@ -931,7 +931,7 @@ export const getReportStats = asyncHandler(async (req, res) => {
       startDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
   }
 
-  // 📊 COMPREHENSIVE REPORT ANALYTICS
+  // COMPREHENSIVE REPORT ANALYTICS
   const [
     totalStats,
     statusBreakdown,
@@ -1052,7 +1052,7 @@ export const getReportStats = asyncHandler(async (req, res) => {
   });
 });
 
-// 🎯 HELPER FUNCTION: Apply moderation action to content
+// HELPER FUNCTION: Apply moderation action to content
 const applyModerationAction = async (
   reportType,
   targetId,
@@ -1091,7 +1091,7 @@ const applyModerationAction = async (
       updateData.deleteReason = reason;
       updateData.moderationStatus = "rejected";
       if (reportType === "thread") {
-        updateData.isApproved = false; // ✅ SYNC isApproved for thread
+        updateData.isApproved = false; // SYNC isApproved for thread
       }
 
       // Gửi thông báo cho tác giả
@@ -1110,7 +1110,7 @@ const applyModerationAction = async (
       // Đánh dấu cần chỉnh sửa
       updateData.moderationStatus = "approved";
       if (reportType === "thread") {
-        updateData.isApproved = true; // ✅ SYNC isApproved for thread
+        updateData.isApproved = true; // SYNC isApproved for thread
       }
       updateData.requiresEditing = true;
       updateData.editingNote = reason;
@@ -1131,7 +1131,7 @@ const applyModerationAction = async (
       // Gửi cảnh báo cho tác giả
       updateData.moderationStatus = "approved";
       if (reportType === "thread") {
-        updateData.isApproved = true; // ✅ SYNC isApproved for thread
+        updateData.isApproved = true; // SYNC isApproved for thread
       }
       if (authorId) {
         // Tạo notification warning cho user
@@ -1143,7 +1143,7 @@ const applyModerationAction = async (
       // Tạm khóa tài khoản
       updateData.moderationStatus = "rejected";
       if (reportType === "thread") {
-        updateData.isApproved = false; // ✅ SYNC isApproved for thread
+        updateData.isApproved = false; // SYNC isApproved for thread
       }
       if (authorId) {
         // Lấy thời gian suspend từ reason (format: "reason|days") hoặc mặc định 7 ngày
@@ -1178,7 +1178,7 @@ const applyModerationAction = async (
       // Cấm vĩnh viễn
       updateData.moderationStatus = "rejected";
       if (reportType === "thread") {
-        updateData.isApproved = false; // ✅ SYNC isApproved for thread
+        updateData.isApproved = false; // SYNC isApproved for thread
       }
       if (authorId) {
         await User.findByIdAndUpdate(authorId, {
@@ -1196,10 +1196,10 @@ const applyModerationAction = async (
       break;
   }
 
-  // ===== 🛡️ ENSURE CONSISTENCY BEFORE UPDATE =====
+  // ===== ENSURE CONSISTENCY BEFORE UPDATE =====
   updateData = ensureThreadModerationConsistency(updateData, reportType);
 
-  console.log("🔍 Applying moderation action:", {
+  console.log("Applying moderation action:", {
     reportType,
     targetId,
     actionTaken,
@@ -1216,7 +1216,7 @@ const applyModerationAction = async (
     await ForumReply.findByIdAndUpdate(targetId, updateData);
   }
 
-  // Log the moderation action - sử dụng action phù hợp với enum
+  // Log the moderation action - using action phù hợp với enum
   let logAction = "settings_updated"; // fallback action
 
   if (reportType === "thread") {
@@ -1253,13 +1253,13 @@ const applyModerationAction = async (
   });
 };
 
-// ===== 🛡️ UTILITY FUNCTION FOR THREAD MODERATION CONSISTENCY =====
+// =====  UTILITY FUNCTION FOR THREAD MODERATION CONSISTENCY =====
 const ensureThreadModerationConsistency = (updateData, reportType) => {
   if (reportType === "thread" && updateData.moderationStatus) {
     // Đảm bảo isApproved luôn sync với moderationStatus
     updateData.isApproved = updateData.moderationStatus === "approved";
 
-    console.log("🔧 Thread moderation consistency applied:", {
+    console.log(" Thread moderation consistency applied:", {
       moderationStatus: updateData.moderationStatus,
       isApproved: updateData.isApproved,
     });
@@ -1278,7 +1278,7 @@ const createWarningNotification = async (userId, reason, adminId) => {
     const notification = await Notification.create({
       recipient: userId,
       type: "moderation_warning",
-      title: "⚠️ Cảnh báo vi phạm quy định",
+      title: "Cảnh báo vi phạm quy định",
       message: `Nội dung của bạn đã vi phạm quy định cộng đồng. Lý do: ${reason}`,
       priority: "high",
       relatedData: {
@@ -1302,7 +1302,7 @@ const createWarningNotification = async (userId, reason, adminId) => {
       });
     }
 
-    console.log(`📧 Warning notification sent to user ${userId}`);
+    console.log(`Warning notification sent to user ${userId}`);
   } catch (error) {
     console.error("Error creating warning notification:", error);
   }
@@ -1318,7 +1318,7 @@ const createSuspensionNotification = async (userId, reason, days, adminId) => {
     const notification = await Notification.create({
       recipient: userId,
       type: "account_suspended",
-      title: "🚫 Tài khoản bị tạm khóa",
+      title: "Tài khoản bị tạm khóa",
       message: `Tài khoản của bạn đã bị tạm khóa ${days} ngày. Lý do: ${reason}`,
       priority: "urgent",
       relatedData: {
@@ -1345,7 +1345,7 @@ const createSuspensionNotification = async (userId, reason, days, adminId) => {
     }
 
     console.log(
-      `📧 Suspension notification sent to user ${userId} for ${days} days`
+      `Suspension notification sent to user ${userId} for ${days} days`
     );
   } catch (error) {
     console.error("Error creating suspension notification:", error);
@@ -1361,7 +1361,7 @@ const createBanNotification = async (userId, reason, adminId) => {
     const notification = await Notification.create({
       recipient: userId,
       type: "account_banned",
-      title: "🔒 Tài khoản bị cấm vĩnh viễn",
+      title: "Tài khoản bị cấm vĩnh viễn",
       message: `Tài khoản của bạn đã bị cấm vĩnh viễn. Lý do: ${reason}`,
       priority: "urgent",
       relatedData: {
@@ -1386,7 +1386,7 @@ const createBanNotification = async (userId, reason, adminId) => {
       });
     }
 
-    console.log(`📧 Ban notification sent to user ${userId}`);
+    console.log(`Ban notification sent to user ${userId}`);
   } catch (error) {
     console.error("Error creating ban notification:", error);
   }
@@ -1415,7 +1415,7 @@ const createContentRemovedNotification = async (
     const notification = await Notification.create({
       recipient: userId,
       type: "content_removed",
-      title: `🗑️ ${contentTypeText} đã bị xóa`,
+      title: `${contentTypeText} đã bị xóa`,
       message: `${contentTypeText} của bạn đã bị xóa do vi phạm quy định. Lý do: ${reason}`,
       priority: "high",
       link: link,
@@ -1442,7 +1442,7 @@ const createContentRemovedNotification = async (
       });
     }
 
-    console.log(`📧 Content removed notification sent to user ${userId}`);
+    console.log(`Content removed notification sent to user ${userId}`);
   } catch (error) {
     console.error("Error creating content removed notification:", error);
   }
@@ -1466,7 +1466,7 @@ const createContentEditedNotification = async (
     const notification = await Notification.create({
       recipient: userId,
       type: "content_edited",
-      title: `✏️ ${contentTypeText} cần chỉnh sửa`,
+      title: `${contentTypeText} cần chỉnh sửa`,
       message: `${contentTypeText} của bạn cần được chỉnh sửa. Lý do: ${reason}`,
       priority: "normal",
       link: link,
@@ -1493,7 +1493,8 @@ const createContentEditedNotification = async (
       });
     }
 
-    console.log(`📧 Content edited notification sent to user ${userId}`);
+    console.log(`
+      Content edited notification sent to user ${userId}`);
   } catch (error) {
     console.error("Error creating content edited notification:", error);
   }
@@ -1532,7 +1533,7 @@ export const resolveReport = asyncHandler(async (req, res) => {
         adminNote
       );
     } catch (error) {
-      console.error("❌ Error applying moderation action:", error);
+      console.error(" Error applying moderation action:", error);
     }
   }
 

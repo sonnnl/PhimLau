@@ -49,6 +49,7 @@ const SeriesMoviesPage = lazy(() => import("./pages/SeriesMoviesPage"));
 const GenrePage = lazy(() => import("./pages/GenrePage"));
 const FavoriteMoviesPage = lazy(() => import("./pages/FavoriteMoviesPage"));
 const HistoryPage = lazy(() => import("./pages/HistoryPage"));
+const UserProfilePage = lazy(() => import("./pages/UserProfilePage"));
 
 // Admin pages
 const AdminSetup = lazy(() => import("./admin/pages/AdminSetup"));
@@ -153,6 +154,7 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route path="/profile/:userId" element={<UserProfilePage />} />
                 <Route path="/movie/:slug" element={<MovieDetailPage />} />
                 <Route path="/search" element={<SearchResultsPage />} />
                 <Route path="/movies/latest" element={<LatestMoviesPage />} />

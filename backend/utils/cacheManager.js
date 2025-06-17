@@ -64,7 +64,6 @@ class CacheManager {
         cachedAt: new Date().toISOString(),
       },
     });
-    console.log(`Cached movie search: "${normalizedKey}"`);
   }
 
   // ===== 🗂️ CATEGORIES CACHE =====
@@ -94,7 +93,6 @@ class CacheManager {
         cachedAt: new Date().toISOString(),
       },
     });
-    console.log(`📦 Cached ${categories.length} forum categories`);
   }
 
   /**
@@ -102,7 +100,6 @@ class CacheManager {
    */
   invalidateCategories() {
     this.categoriesCache.delete("forum_categories");
-    console.log("🗑️ Invalidated categories cache");
   }
 
   // ===== 👤 USER SESSION CACHE =====
@@ -136,7 +133,6 @@ class CacheManager {
         cachedAt: new Date().toISOString(),
       },
     });
-    console.log(`📦 Cached user session: ${userId}`);
   }
 
   /**
@@ -146,7 +142,6 @@ class CacheManager {
   invalidateUserSession(userId) {
     const cacheKey = `user_${userId}`;
     this.userSessionCache.delete(cacheKey);
-    console.log(`🗑️ Invalidated user session: ${userId}`);
   }
 
   // ===== 💬 THREAD LIST CACHE =====
@@ -180,7 +175,6 @@ class CacheManager {
         cachedAt: new Date().toISOString(),
       },
     });
-    console.log(`📦 Cached thread list: ${cacheKey}`);
   }
 
   /**
@@ -188,7 +182,6 @@ class CacheManager {
    */
   invalidateThreadList() {
     this.threadListCache.clear();
-    console.log("🗑️ Invalidated all thread list cache");
   }
 
   // ===== 📊 STATISTICS CACHE =====
@@ -222,7 +215,6 @@ class CacheManager {
         cachedAt: new Date().toISOString(),
       },
     });
-    console.log(`📦 Cached statistics: ${type}`);
   }
 
   // ===== 🛠️ CORE CACHE METHODS =====
@@ -337,17 +329,12 @@ class CacheManager {
 
       const afterSize = store.size;
       if (beforeSize > afterSize) {
-        console.log(
-          `🧹 Cleaned ${
-            beforeSize - afterSize
-          } expired entries from ${name} cache`
-        );
       }
     });
 
     if (totalCleaned > 0) {
       console.log(
-        `🧹 Cache cleanup completed: ${totalCleaned} total entries removed`
+        ` Cache cleanup completed: ${totalCleaned} total entries removed`
       );
     }
   }

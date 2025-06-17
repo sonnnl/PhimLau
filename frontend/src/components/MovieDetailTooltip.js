@@ -15,6 +15,8 @@ import {
   FiVideo,
   FiUsers,
   FiUserCheck,
+  FiEye,
+  FiHeart,
 } from "react-icons/fi";
 import { StarIcon } from "@chakra-ui/icons";
 
@@ -100,7 +102,9 @@ const MovieDetailTooltip = ({ movie }) => {
     : [];
 
   const avgRating = movie.movieMetadata?.appAverageRating;
-  const ratingCount = movie.movieMetadata?.appRatingCount;
+  const ratingCount = movie.movieMetadata?.appRatingCount || 0;
+  const totalViews = movie.movieMetadata?.appTotalViews || 0;
+  const totalFavorites = movie.movieMetadata?.appTotalFavorites || 0;
 
   return (
     <Box maxWidth="380px" minWidth="320px" p={4}>
@@ -125,23 +129,43 @@ const MovieDetailTooltip = ({ movie }) => {
           </Text>
         )}
 
-        <Box my={1.5}>
-          {ratingCount > 0 ? (
-            <Flex align="center">
-              <StarIcon color="yellow.400" boxSize={4} mr={1} />
-              <Text fontSize="sm" fontWeight="bold" color="gray.700" mr={1}>
+        <HStack spacing={4} my={1.5} flexWrap="wrap">
+          {ratingCount > 0 && (
+            <Flex align="center" title={`${ratingCount} lượt đánh giá`}>
+              <Icon as={StarIcon} color="yellow.400" boxSize={3.5} mr={1.5} />
+              <Text fontSize="sm" fontWeight="bold" color="gray.700">
                 {avgRating ? avgRating.toFixed(1) : "N/A"}
               </Text>
-              <Text fontSize="xs" color="gray.600">
-                ({ratingCount} đánh giá)
+            </Flex>
+          )}
+          {totalViews > 0 && (
+            <Flex
+              align="center"
+              title={`${totalViews.toLocaleString("vi-VN")} lượt xem`}
+            >
+              <Icon as={FiEye} color="blue.500" boxSize={3.5} mr={1.5} />
+              <Text fontSize="sm" fontWeight="bold" color="gray.700">
+                {totalViews.toLocaleString("vi-VN")}
               </Text>
             </Flex>
-          ) : (
-            <Text fontSize="xs" color="gray.500" fontStyle="italic">
-              Chưa có đánh giá.
-            </Text>
           )}
-        </Box>
+          {totalFavorites > 0 && (
+            <Flex
+              align="center"
+              title={`${totalFavorites.toLocaleString("vi-VN")} lượt yêu thích`}
+            >
+              <Icon as={FiHeart} color="red.500" boxSize={3.5} mr={1.5} />
+              <Text fontSize="sm" fontWeight="bold" color="gray.700">
+                {totalFavorites.toLocaleString("vi-VN")}
+              </Text>
+            </Flex>
+          )}
+        </HStack>
+        {ratingCount === 0 && totalViews === 0 && (
+          <Text fontSize="xs" color="gray.500" fontStyle="italic" my={1.5}>
+            Chưa có số liệu thống kê.
+          </Text>
+        )}
 
         <VStack spacing={1} align="stretch" mt={1}>
           {renderSimpleInfo(movie.year, "Năm", FiTag)}

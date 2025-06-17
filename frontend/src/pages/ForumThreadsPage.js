@@ -26,13 +26,10 @@ import {
   Avatar,
   HStack,
   Icon,
-  Tag,
   Tooltip,
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
-  SimpleGrid,
-  Badge,
   Menu,
   MenuButton,
   MenuList,
@@ -47,6 +44,7 @@ import {
   ModalFooter,
   useDisclosure,
   useToast,
+  TableContainer,
 } from "@chakra-ui/react";
 import {
   fetchForumThreadsWithFilters,
@@ -55,7 +53,6 @@ import {
 import {
   FiMessageSquare,
   FiEye,
-  FiClock,
   FiChevronRight,
   FiHome,
   FiPlusCircle,
@@ -64,23 +61,28 @@ import {
   FiMoreVertical,
   FiTrash2,
 } from "react-icons/fi";
-import { useAuth } from "../contexts/AuthContext"; // Để kiểm tra đăng nhập cho nút Tạo chủ đề
+import { useAuth } from "../contexts/AuthContext";
 
-// Helper function to format date (can be replaced with date-fns or similar)
+// Helper function to format date
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch (e) {
-    return dateString; // fallback
-  }
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = (now.getTime() - date.getTime()) / 1000;
+
+  if (diffInSeconds < 60) return "vài giây trước";
+  if (diffInSeconds < 3600)
+    return `${Math.floor(diffInSeconds / 60)} phút trước`;
+  if (diffInSeconds < 86400)
+    return `${Math.floor(diffInSeconds / 3600)} giờ trước`;
+  if (diffInSeconds < 604800)
+    return `${Math.floor(diffInSeconds / 86400)} ngày trước`;
+
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 };
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, isLoading }) => (
@@ -122,8 +124,8 @@ const Pagination = ({
   }
 
   return (
-    <Flex justify="center" align="center" mt={6} wrap="wrap">
-      <Text fontSize="sm" mr={4} mb={{ base: 2, md: 0 }}>
+    <Flex justify="center" align="center" mt={8} wrap="wrap">
+      <Text fontSize="sm" mr={4} mb={{ base: 2, md: 0 }} color="gray.400">
         Trang {currentPage} / {totalPages} (Tổng số {totalItems} mục)
       </Text>
       <HStack spacing={2} wrap="wrap" justifyContent="center">
@@ -134,7 +136,6 @@ const Pagination = ({
         >
           Trước
         </Button>
-        {/* Logic hiển thị số trang có thể phức tạp hơn cho nhiều trang (e.g., ... 5 6 7 ... ) */}
         {pageNumbers.map((number) => (
           <Button
             key={number}
@@ -186,7 +187,7 @@ const ForumThreadsPage = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const limit = 15; // Số thread mỗi trang, có thể đặt trong config
+  const limit = 15;
 
   const fetchThreadsData = useCallback(
     async (pageToFetch) => {
@@ -202,20 +203,30 @@ const ForumThreadsPage = () => {
         if (pageToFetch !== currentPage) {
           setCurrentPage(pageToFetch);
         }
-        // Update URL without full page reload
-        navigate(`${location.pathname}?page=${pageToFetch}`, { replace: true });
+        if (location.search !== `?page=${pageToFetch}`) {
+          navigate(`${location.pathname}?page=${pageToFetch}`, {
+            replace: true,
+          });
+        }
       } catch (err) {
         setError(err.message || "Không thể tải danh sách chủ đề.");
         console.error(err);
       }
       setLoading(false);
     },
-    [categorySlug, navigate, location.pathname, limit]
+    [
+      categorySlug,
+      navigate,
+      location.pathname,
+      location.search,
+      limit,
+      currentPage,
+    ]
   );
 
   useEffect(() => {
     fetchThreadsData(initialPage);
-  }, [categorySlug, initialPage, fetchThreadsData]); // Sử dụng initialPage ở đây
+  }, [categorySlug, initialPage, fetchThreadsData]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= (threadsData.pagination?.totalPages || 1)) {
@@ -223,9 +234,15 @@ const ForumThreadsPage = () => {
     }
   };
 
-  const handleDeleteRequest = (threadId) => {
+  const handleDeleteRequest = (threadId, e) => {
+    e.stopPropagation();
     setDeleteTarget(threadId);
     onDeleteOpen();
+  };
+
+  const handleRowClick = (slug, e) => {
+    if (e.target.closest("A, BUTTON")) return;
+    navigate(`/forum/thread/${slug}`);
   };
 
   const confirmDelete = async () => {
@@ -239,7 +256,7 @@ const ForumThreadsPage = () => {
         status: "success",
         duration: 3000,
       });
-      fetchThreadsData(currentPage); // Refetch the list
+      fetchThreadsData(currentPage); // Refetch
     } catch (error) {
       toast({
         title: "Lỗi",
@@ -254,7 +271,6 @@ const ForumThreadsPage = () => {
   };
 
   if (loading && !threadsData.threads.length) {
-    // Chỉ hiển thị spinner toàn trang khi chưa có data
     return (
       <Box
         display="flex"
@@ -300,8 +316,31 @@ const ForumThreadsPage = () => {
 
   const { threads, pagination, category } = threadsData;
 
+  const renderThreadStats = (thread, props) => (
+    <HStack spacing={4} color="gray.400" fontSize="sm" {...props}>
+      <Tooltip label="Lượt trả lời" placement="top">
+        <HStack spacing={1}>
+          <Icon as={FiMessageSquare} />
+          <Text fontWeight="medium">{thread.replyCount || 0}</Text>
+        </HStack>
+      </Tooltip>
+      <Tooltip label="Lượt thích" placement="top">
+        <HStack spacing={1}>
+          <Icon as={FiHeart} />
+          <Text fontWeight="medium">{thread.likeCount || 0}</Text>
+        </HStack>
+      </Tooltip>
+      <Tooltip label="Lượt xem" placement="top">
+        <HStack spacing={1}>
+          <Icon as={FiEye} />
+          <Text fontWeight="medium">{thread.views || 0}</Text>
+        </HStack>
+      </Tooltip>
+    </HStack>
+  );
+
   return (
-    <Box p={{ base: 3, md: 5 }} maxW="1200px" mx="auto">
+    <Box p={{ base: 3, md: 5 }} maxW="1300px" mx="auto">
       <Breadcrumb
         spacing="8px"
         separator={<Icon as={FiChevronRight} color="gray.500" />}
@@ -343,7 +382,7 @@ const ForumThreadsPage = () => {
         {isAuthenticated && (
           <Button
             as={RouterLink}
-            to={`/forum/create-thread?category=${categorySlug}`} // Truyền category slug để pre-fill nếu cần
+            to={`/forum/create-thread?category=${categorySlug}`}
             colorScheme="orange"
             leftIcon={<Icon as={FiPlusCircle} />}
           >
@@ -360,187 +399,260 @@ const ForumThreadsPage = () => {
           <Text>Chưa có chủ đề nào trong danh mục này.</Text>
         </Alert>
       ) : (
-        <VStack spacing={4} align="stretch">
-          {threads.map((thread) => (
-            <Box
-              key={thread._id}
-              p={4}
-              borderWidth="1px"
-              borderRadius="md"
-              borderColor={thread.isPinned ? "purple.400" : "gray.700"}
-              bg={thread.isPinned ? "purple.900" : "background.secondaryAlt"}
-              _hover={{
-                borderColor: thread.isPinned ? "purple.300" : "orange.400",
-                shadow: "md",
-              }}
-              position="relative"
-              // ✨ PINNED THREAD STYLING
-              {...(thread.isPinned && {
-                borderLeftWidth: "4px",
-                borderLeftColor: "purple.400",
-                shadow: "lg",
-              })}
-            >
-              <Flex
-                direction={{ base: "column", md: "row" }}
-                justify="space-between"
-              >
-                <Box flex={1} mr={{ base: 0, md: 4 }} mb={{ base: 3, md: 0 }}>
-                  <Heading as="h3" size="md" mb={1}>
-                    <HStack spacing={2} align="center">
-                      {/* ✨ PINNED ICON */}
-                      {thread.isPinned && (
-                        <Tooltip label="Bài viết được ghim" placement="top">
-                          <Icon
-                            as={FiBookmark}
-                            color="purple.400"
-                            boxSize={4}
-                            transform="rotate(15deg)"
-                          />
-                        </Tooltip>
-                      )}
-                      <Link
-                        as={RouterLink}
-                        to={`/forum/thread/${thread.slug}`}
-                        _hover={{
-                          color: thread.isPinned ? "purple.300" : "orange.400",
-                        }}
-                        flex={1}
-                        color={thread.isPinned ? "purple.200" : "inherit"}
-                        fontWeight={thread.isPinned ? "bold" : "normal"}
-                      >
-                        {thread.title}
-                      </Link>
-                      {/* ✨ PINNED BADGE */}
-                      {thread.isPinned && (
-                        <Badge
-                          colorScheme="purple"
-                          size="sm"
-                          variant="solid"
-                          fontWeight="bold"
-                          px={2}
-                        >
-                          📌 GHIM
-                        </Badge>
-                      )}
-                      {thread.movieMetadata &&
-                        thread.movieMetadata.length > 0 && (
-                          <Tooltip
-                            label={`Thảo luận về ${
-                              thread.movieMetadata.length
-                            } phim: ${thread.movieMetadata
-                              .map((m) => m.movieTitle)
-                              .join(", ")}`}
-                            placement="top"
-                          >
-                            <Badge
-                              colorScheme="orange"
-                              size="sm"
-                              variant="subtle"
-                            >
-                              🎬 {thread.movieMetadata.length}
-                            </Badge>
-                          </Tooltip>
-                        )}
-                    </HStack>
-                  </Heading>
-                  <HStack spacing={2} fontSize="sm" color="gray.400">
-                    <Avatar
-                      size="xs"
-                      name={thread.author?.displayName}
-                      src={thread.author?.avatarUrl}
-                    />
-                    <Text fontWeight="bold">
-                      {thread.author?.displayName || "Người dùng ẩn danh"}
-                    </Text>
-                    <Text>• {formatDate(thread.createdAt)}</Text>
-                  </HStack>
-                </Box>
-                <Flex align="center">
-                  <SimpleGrid
-                    columns={{ base: 2, sm: 4 }}
-                    spacingX={4}
-                    spacingY={2}
-                    minW={{ md: "280px" }}
-                    textAlign={{ base: "left", md: "right" }}
-                    fontSize="sm"
+        <Box>
+          {/* DESKTOP VIEW - TABLE */}
+          <TableContainer
+            display={{ base: "none", md: "block" }}
+            borderWidth="1px"
+            borderColor="gray.700"
+            borderRadius="md"
+            bg="background.secondaryAlt"
+          >
+            <Table variant="simple">
+              <Thead>
+                <Tr>
+                  <Th pl={4} py={3} w="55%">
+                    Chủ đề
+                  </Th>
+                  <Th textAlign="center" w="20%">
+                    Thống kê
+                  </Th>
+                  <Th w="25%">Hoạt động cuối</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {threads.map((thread) => (
+                  <Tr
+                    key={thread._id}
+                    borderLeft="4px solid"
+                    borderColor={thread.isPinned ? "purple.400" : "transparent"}
+                    bg={
+                      thread.isPinned
+                        ? "rgba(128, 90, 213, 0.1)"
+                        : "transparent"
+                    }
+                    _hover={{ bg: "whiteAlpha.100", cursor: "pointer" }}
+                    onClick={(e) => handleRowClick(thread.slug, e)}
                   >
-                    <Tooltip label="Lượt trả lời" placement="top">
-                      <HStack justify={{ base: "flex-start", md: "flex-end" }}>
-                        <Icon as={FiMessageSquare} color="gray.500" />
-                        <Text>{thread.replyCount || 0}</Text>
+                    <Td verticalAlign="middle" py={3}>
+                      <HStack align="start">
+                        <Link
+                          as={RouterLink}
+                          to={`/profile/${thread.author?._id}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Avatar
+                            size="sm"
+                            name={thread.author?.displayName}
+                            src={thread.author?.avatarUrl}
+                            mt={1}
+                          />
+                        </Link>
+                        <VStack align="start" spacing={1}>
+                          <HStack>
+                            {thread.isPinned && (
+                              <Tooltip
+                                label="Bài viết được ghim"
+                                placement="top"
+                              >
+                                <Icon as={FiBookmark} color="purple.400" />
+                              </Tooltip>
+                            )}
+                            <Link
+                              as={RouterLink}
+                              to={`/forum/thread/${thread.slug}`}
+                              fontWeight="semibold"
+                              fontSize="md"
+                              color="whiteAlpha.900"
+                              _hover={{ color: "orange.300" }}
+                            >
+                              {thread.title}
+                            </Link>
+                          </HStack>
+                          <HStack spacing={2} fontSize="sm" color="gray.400">
+                            <Text>bởi</Text>
+                            <Link
+                              as={RouterLink}
+                              to={`/profile/${thread.author?._id}`}
+                              fontWeight="bold"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {thread.author?.displayName ||
+                                "Người dùng ẩn danh"}
+                            </Link>
+                          </HStack>
+                        </VStack>
                       </HStack>
-                    </Tooltip>
-                    <Tooltip label="Lượt thích" placement="top">
-                      <HStack justify={{ base: "flex-start", md: "flex-end" }}>
-                        <Icon as={FiHeart} color="red.400" />
-                        <Text>{thread.likeCount || 0}</Text>
-                      </HStack>
-                    </Tooltip>
-                    <Tooltip label="Lượt xem" placement="top">
-                      <HStack justify={{ base: "flex-start", md: "flex-end" }}>
-                        <Icon as={FiEye} color="gray.500" />
-                        <Text>{thread.views || 0}</Text>
-                      </HStack>
-                    </Tooltip>
-                    <Tooltip label="Hoạt động cuối" placement="top">
-                      <HStack
-                        justify={{ base: "flex-start", md: "flex-end" }}
-                        gridColumn={{ base: "span 2", sm: "span 1" }}
-                      >
-                        <Icon as={FiClock} color="gray.500" />
-                        <Text noOfLines={1}>
-                          {formatDate(thread.lastReplyTime)}
+                    </Td>
+                    <Td textAlign="center" verticalAlign="middle">
+                      {renderThreadStats(thread)}
+                    </Td>
+                    <Td verticalAlign="middle" py={3}>
+                      {thread.lastReplyAuthor ? (
+                        <VStack align="start" spacing={0} fontSize="sm">
+                          <HStack>
+                            <Link
+                              as={RouterLink}
+                              to={`/profile/${thread.lastReplyAuthor?._id}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Avatar
+                                size="2xs"
+                                name={thread.lastReplyAuthor?.displayName}
+                                src={thread.lastReplyAuthor?.avatarUrl}
+                              />
+                            </Link>
+                            <Link
+                              as={RouterLink}
+                              to={`/profile/${thread.lastReplyAuthor?._id}`}
+                              fontWeight="bold"
+                              color="whiteAlpha.800"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {thread.lastReplyAuthor?.displayName}
+                            </Link>
+                          </HStack>
+                          <Text color="gray.400" mt={1}>
+                            {formatDate(thread.lastReplyTime)}
+                          </Text>
+                        </VStack>
+                      ) : (
+                        <Text fontSize="sm" color="gray.500">
+                          Chưa có trả lời
                         </Text>
-                      </HStack>
-                    </Tooltip>
-                  </SimpleGrid>
+                      )}
+                    </Td>
+                    <Td verticalAlign="middle" textAlign="right">
+                      {user &&
+                        (user.role === "admin" ||
+                          user._id === thread.author?._id) && (
+                          <Menu>
+                            <MenuButton
+                              as={IconButton}
+                              icon={<FiMoreVertical />}
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Actions
+                            </MenuButton>
+                            <MenuList
+                              bg="background.card"
+                              borderColor="gray.600"
+                            >
+                              <MenuItem
+                                icon={<FiTrash2 />}
+                                onClick={(e) =>
+                                  handleDeleteRequest(thread._id, e)
+                                }
+                                color="red.400"
+                              >
+                                Xóa chủ đề
+                              </MenuItem>
+                            </MenuList>
+                          </Menu>
+                        )}
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableContainer>
 
-                  {user &&
-                    (user.role === "admin" ||
-                      user._id === thread.author?._id) && (
-                      <Menu>
-                        <MenuButton
-                          as={IconButton}
-                          icon={<FiMoreVertical />}
-                          variant="ghost"
-                          size="sm"
-                          ml={4}
-                        />
-                        <MenuList bg="background.card" borderColor="gray.600">
-                          <MenuItem
-                            icon={<FiTrash2 />}
-                            onClick={() => handleDeleteRequest(thread._id)}
-                            color="red.400"
-                          >
-                            Xóa chủ đề
-                          </MenuItem>
-                        </MenuList>
-                      </Menu>
+          {/* MOBILE VIEW - CARDS */}
+          <VStack spacing={3} display={{ base: "block", md: "none" }}>
+            {threads.map((thread) => (
+              <Box
+                key={thread._id}
+                p={3}
+                borderWidth="1px"
+                borderRadius="md"
+                borderColor={thread.isPinned ? "purple.400" : "gray.700"}
+                bg={
+                  thread.isPinned
+                    ? "rgba(128, 90, 213, 0.1)"
+                    : "background.secondaryAlt"
+                }
+                borderLeftWidth="4px"
+                onClick={(e) => handleRowClick(thread.slug, e)}
+              >
+                <VStack align="start" spacing={2}>
+                  <HStack w="full">
+                    {thread.isPinned && (
+                      <Icon as={FiBookmark} color="purple.400" />
                     )}
-                </Flex>
-              </Flex>
-              {thread.lastReplyAuthor && (
-                <HStack
-                  mt={2}
-                  fontSize="xs"
-                  color="gray.500"
-                  justify="flex-end"
-                >
-                  <Text>Trả lời cuối bởi:</Text>
-                  <Avatar
-                    size="2xs"
-                    name={thread.lastReplyAuthor?.displayName}
-                    src={thread.lastReplyAuthor?.avatarUrl}
-                  />
-                  <Text fontWeight="semibold">
-                    {thread.lastReplyAuthor?.displayName}
-                  </Text>
-                </HStack>
-              )}
-            </Box>
-          ))}
-        </VStack>
+                    <Link
+                      as={RouterLink}
+                      to={`/forum/thread/${thread.slug}`}
+                      fontWeight="bold"
+                      fontSize="md"
+                      noOfLines={2}
+                    >
+                      {thread.title}
+                    </Link>
+                  </HStack>
+                  <HStack spacing={2} fontSize="sm" color="gray.400" w="full">
+                    <Link
+                      as={RouterLink}
+                      to={`/profile/${thread.author?._id}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Avatar
+                        size="xs"
+                        name={thread.author?.displayName}
+                        src={thread.author?.avatarUrl}
+                      />
+                    </Link>
+                    <Link
+                      as={RouterLink}
+                      to={`/profile/${thread.author?._id}`}
+                      fontWeight="bold"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {thread.author?.displayName || "..."}
+                    </Link>
+                    <Text>•</Text>
+                    <Text>{formatDate(thread.createdAt)}</Text>
+                    <Spacer />
+                    {user &&
+                      (user.role === "admin" ||
+                        user._id === thread.author?._id) && (
+                        <Menu>
+                          <MenuButton
+                            as={IconButton}
+                            icon={<FiMoreVertical />}
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Actions
+                          </MenuButton>
+                          <MenuList bg="background.card" borderColor="gray.600">
+                            <MenuItem
+                              icon={<FiTrash2 />}
+                              onClick={(e) =>
+                                handleDeleteRequest(thread._id, e)
+                              }
+                              color="red.400"
+                            >
+                              Xóa chủ đề
+                            </MenuItem>
+                          </MenuList>
+                        </Menu>
+                      )}
+                  </HStack>
+                  {renderThreadStats(thread, {
+                    w: "full",
+                    justify: "space-around",
+                    pt: 2,
+                    borderTopWidth: "1px",
+                    borderColor: "gray.700",
+                  })}
+                </VStack>
+              </Box>
+            ))}
+          </VStack>
+        </Box>
       )}
 
       {pagination && pagination.totalPages > 0 && (

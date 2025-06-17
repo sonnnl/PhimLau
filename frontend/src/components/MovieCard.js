@@ -13,7 +13,7 @@ import {
   Flex,
 } from "@chakra-ui/react";
 import { Link as RouterLink } from "react-router-dom";
-import { FiClock, FiGlobe } from "react-icons/fi";
+import { FiClock, FiGlobe, FiEye } from "react-icons/fi";
 import { StarIcon } from "@chakra-ui/icons";
 import MovieDetailTooltip from "./MovieDetailTooltip";
 
@@ -21,6 +21,17 @@ const MovieCard = ({ movie }) => {
   if (!movie) {
     return null;
   }
+
+  const formatViews = (num) => {
+    if (!num) return 0;
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "tr";
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+    }
+    return num;
+  };
 
   const CDN_IMAGE_DOMAIN = "https://phimimg.com";
 
@@ -38,6 +49,8 @@ const MovieCard = ({ movie }) => {
     movie.movieMetadata?.appAverageRating || movie.appAverageRating;
   const ratingCount =
     movie.movieMetadata?.appRatingCount || movie.appRatingCount;
+  const totalViews =
+    movie.movieMetadata?.appTotalViews || movie.appTotalViews || 0;
 
   let bottomText = "N/A";
   if (movie.episode_current && movie.lang && movie.quality) {
@@ -153,14 +166,30 @@ const MovieCard = ({ movie }) => {
             >
               {bottomText}
             </Text>
-            {ratingCount > 0 && (
-              <Flex align="center">
-                <StarIcon color="yellow.400" boxSize={3} mr={0.5} />
-                <Text fontSize="xs" color="gray.400" fontWeight="semibold">
-                  {avgRating ? avgRating.toFixed(1) : "-"}
-                </Text>
-              </Flex>
-            )}
+            <HStack spacing={3}>
+              {totalViews > 0 && (
+                <Flex
+                  align="center"
+                  title={`${totalViews.toLocaleString("vi-VN")} lượt xem`}
+                >
+                  <Icon as={FiEye} color="gray.400" boxSize={4} mr={1} />
+                  <Text fontSize="xs" color="gray.400" fontWeight="semibold">
+                    {formatViews(totalViews)}
+                  </Text>
+                </Flex>
+              )}
+              {ratingCount > 0 && (
+                <Flex
+                  align="center"
+                  title={`${ratingCount.toLocaleString("vi-VN")} lượt đánh giá`}
+                >
+                  <StarIcon color="yellow.400" boxSize={3} mr={1} />
+                  <Text fontSize="xs" color="gray.400" fontWeight="semibold">
+                    {avgRating ? avgRating.toFixed(1) : "-"}
+                  </Text>
+                </Flex>
+              )}
+            </HStack>
           </Flex>
         </Box>
       </LinkBox>

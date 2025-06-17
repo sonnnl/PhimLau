@@ -16,11 +16,9 @@ import {
   Divider,
   useColorModeValue,
   useToast,
-  Avatar,
-  SimpleGrid,
   useDisclosure,
 } from "@chakra-ui/react";
-import { FiBell, FiCheck, FiX, FiExternalLink } from "react-icons/fi";
+import { FiBell, FiCheck, FiExternalLink } from "react-icons/fi";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
@@ -37,6 +35,8 @@ const NotificationCenter = () => {
 
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
+  const hoverBg = useColorModeValue("gray.50", "gray.700");
+  const unreadBg = useColorModeValue("blue.50", "blue.900");
 
   useEffect(() => {
     if (user && token) {
@@ -70,7 +70,7 @@ const NotificationCenter = () => {
       });
 
       socket.current.on("notification", (notification) => {
-        console.log("📢 New notification received:", notification);
+        console.log(" New notification received:", notification);
 
         // Add to notifications list
         setNotifications((prev) => [notification, ...prev]);
@@ -89,11 +89,11 @@ const NotificationCenter = () => {
       });
 
       socket.current.on("disconnect", () => {
-        console.log("❌ Disconnected from notification socket");
+        console.log("Disconnected from notification socket");
       });
 
       socket.current.on("connect_error", (error) => {
-        console.error("🔥 Socket connection error:", error);
+        console.error("Socket connection error:", error);
       });
     } catch (error) {
       console.error("Error initializing socket:", error);
@@ -271,9 +271,9 @@ const NotificationCenter = () => {
       </PopoverTrigger>
 
       <PopoverContent
-        w="400px"
         bg={bgColor}
-        border={`1px solid ${borderColor}`}
+        borderColor={borderColor}
+        w={{ base: "100vw", sm: "400px" }}
       >
         <PopoverHeader borderBottomWidth="1px">
           <HStack justify="space-between">
@@ -308,12 +308,8 @@ const NotificationCenter = () => {
                   <Box
                     p={3}
                     cursor="pointer"
-                    _hover={{ bg: useColorModeValue("gray.50", "gray.700") }}
-                    bg={
-                      notification.isRead
-                        ? "transparent"
-                        : useColorModeValue("blue.50", "blue.900")
-                    }
+                    _hover={{ bg: hoverBg }}
+                    bg={notification.isRead ? "transparent" : unreadBg}
                     onClick={() => handleNotificationClick(notification)}
                   >
                     <HStack align="start" spacing={3}>

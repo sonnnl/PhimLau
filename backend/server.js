@@ -19,6 +19,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import likeRoutes from "./routes/likeRoutes.js";
 import favoriteRoutes from "./routes/favoriteRoutes.js";
 import watchHistoryRoutes from "./routes/watchHistoryRoutes.js";
+import socialRoutes from "./routes/socialRoutes.js";
 
 import { protect } from "./middleware/authMiddleware.js";
 
@@ -60,6 +61,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/likes", likeRoutes);
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/watch-history", watchHistoryRoutes);
+app.use("/api/social", socialRoutes);
 
 // Định nghĩa middleware xử lý lỗi ngay tại đây
 // Middleware xử lý lỗi 404 Not Found

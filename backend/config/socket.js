@@ -49,7 +49,7 @@ const setupSocket = (server) => {
     // Join admin room if user is admin
     if (socket.user.role === "admin") {
       socket.join("admin_room");
-      console.log(`👑 Admin ${socket.user.username} joined admin room`);
+      console.log(`Admin ${socket.user.username} joined admin room`);
     }
 
     // Send user connection status to admins
@@ -63,7 +63,7 @@ const setupSocket = (server) => {
     // Handle notification read confirmation
     socket.on("notification_read", (data) => {
       console.log(
-        `📖 User ${socket.userId} read notification ${data.notificationId}`
+        `User ${socket.userId} read notification ${data.notificationId}`
       );
 
       // Could emit back to admin about read status
@@ -94,7 +94,7 @@ const setupSocket = (server) => {
 
     // Disconnect handling
     socket.on("disconnect", (reason) => {
-      console.log(`❌ User disconnected: ${socket.user.username} (${reason})`);
+      console.log(`User disconnected: ${socket.user.username} (${reason})`);
 
       // Notify admins about user disconnect
       socket.to("admin_room").emit("user_status", {
@@ -108,7 +108,7 @@ const setupSocket = (server) => {
 
     // Error handling
     socket.on("error", (error) => {
-      console.error(`🔥 Socket error for user ${socket.userId}:`, error);
+      console.error(`Socket error for user ${socket.userId}:`, error);
     });
   });
 

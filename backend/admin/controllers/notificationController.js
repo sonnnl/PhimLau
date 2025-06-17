@@ -102,7 +102,7 @@ const sendNotification = asyncHandler(async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `🎉 Đã gửi thông báo thành công!`,
+      message: `  Đã gửi thông báo thành công!`,
       data: notification,
     });
   } catch (error) {
@@ -191,7 +191,7 @@ const getAllNotifications = asyncHandler(async (req, res) => {
   }
 });
 
-// 🔥 GỬI THÔNG BÁO KIỂM DUYỆT CHO USER
+// GỬI THÔNG BÁO KIỂM DUYỆT CHO USER
 export const createModerationNotification = async ({
   userId,
   threadId,
@@ -203,19 +203,19 @@ export const createModerationNotification = async ({
   try {
     const statusMessages = {
       approved: {
-        title: "✅ Bài viết đã được phê duyệt",
+        title: "Bài viết đã được phê duyệt",
         message: `Bài viết "${threadTitle}" của bạn đã được phê duyệt và hiển thị công khai.`,
         type: "system",
       },
       rejected: {
-        title: "❌ Bài viết bị từ chối",
+        title: "Bài viết bị từ chối",
         message: `Bài viết "${threadTitle}" của bạn đã bị từ chối. Lý do: ${
           note || "Không có lý do cụ thể"
         }.`,
         type: "moderation",
       },
       pending: {
-        title: "⏳ Bài viết đang chờ kiểm duyệt",
+        title: "Bài viết đang chờ kiểm duyệt",
         message: `Bài viết "${threadTitle}" của bạn đang được xem xét lại.`,
         type: "system",
       },

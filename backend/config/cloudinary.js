@@ -8,15 +8,15 @@ dotenv.config();
 console.log("🔍 Environment Variables Check:");
 console.log(
   "CLOUDINARY_CLOUD_NAME:",
-  process.env.CLOUDINARY_CLOUD_NAME ? "✅ Set" : "❌ Missing"
+  process.env.CLOUDINARY_CLOUD_NAME ? " Set" : " Missing"
 );
 console.log(
   "CLOUDINARY_API_KEY:",
-  process.env.CLOUDINARY_API_KEY ? "✅ Set" : "❌ Missing"
+  process.env.CLOUDINARY_API_KEY ? " Set" : " Missing"
 );
 console.log(
   "CLOUDINARY_API_SECRET:",
-  process.env.CLOUDINARY_API_SECRET ? "✅ Set" : "❌ Missing"
+  process.env.CLOUDINARY_API_SECRET ? " Set" : " Missing"
 );
 
 // Configure Cloudinary
