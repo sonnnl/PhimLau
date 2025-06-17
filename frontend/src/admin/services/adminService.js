@@ -58,9 +58,15 @@ export const getDashboardStats = async () => {
 // ================================
 export const getAllUsers = async (params = {}) => {
   try {
-    const { page = 1, limit = 10, search = "", role = "" } = params;
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      role = "",
+      status = "",
+    } = params;
     const response = await adminAPI.get("/users", {
-      params: { page, limit, search, role },
+      params: { page, limit, search, role, status },
     });
     return response.data;
   } catch (error) {

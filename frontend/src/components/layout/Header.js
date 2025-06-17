@@ -62,18 +62,21 @@ const NavLink = ({ children, to }) => (
   <ChakraLink
     as={RouterLink}
     to={to}
-    px={2}
-    py={1}
-    rounded={"md"}
-    color="text.primary"
+    px={3}
+    py={1.5}
+    fontSize="sm"
+    fontWeight="semibold"
+    color="text.secondary"
+    transition="all 0.2s ease-in-out"
+    borderRadius="md"
     _hover={{
       textDecoration: "none",
+      color: "text.primary",
       bg: "brand.800",
-      color: "brand.accent",
     }}
     _activeLink={{
-      fontWeight: "bold",
-      color: "brand.accent",
+      color: "white",
+      bg: "brand.accent",
     }}
   >
     {children}
@@ -138,11 +141,11 @@ export default function Header() {
     justifyContent: "flex-start",
     bg: "transparent",
     _hover: { bg: "brand.700", color: "brand.accent" },
-    py: 3,
-    px: 4,
+    py: 2.5,
+    px: 3,
     fontSize: "sm",
     fontWeight: "medium",
-    borderRadius: "lg",
+    borderRadius: "md",
     transition: "background-color 0.2s, color 0.2s",
   };
 
@@ -258,55 +261,57 @@ export default function Header() {
                     onMouseEnter={handleProfileMouseEnter}
                     onMouseLeave={handleProfileMouseLeave}
                     mt={2}
-                    bg="background.card"
-                    borderColor="brand.700"
+                    bg="background.secondary"
                     border="1px solid"
+                    borderColor="brand.700"
                     borderRadius="xl"
-                    boxShadow="2xl"
+                    boxShadow="dark-lg"
                     minW="280px"
-                    py={4}
+                    p={2}
                     zIndex="dropdown"
-                    overflow="hidden"
+                    sx={{
+                      backdropFilter: "blur(10px)",
+                      bg: "rgba(23, 25, 35, 0.85)",
+                    }}
                   >
-                    {/* User Info Header - Restored */}
-                    <Box
-                      px={6}
-                      py={3}
-                      mb={3}
-                      bg="linear-gradient(135deg, var(--chakra-colors-brand-800), var(--chakra-colors-brand-900))"
-                    >
+                    {/* User Info Header - Redesigned */}
+                    <Box px={2} py={2}>
                       <HStack spacing={4}>
                         <Avatar
-                          size="md"
+                          size="lg"
                           src={
                             user.avatarUrl ||
                             `https://ui-avatars.com/api/?name=${encodeURIComponent(
                               user.displayName || user.email
-                            )}&background=random&color=fff&size=48`
+                            )}&background=random&color=fff&size=64`
                           }
                           name={user.displayName || user.email}
                           border="2px solid"
                           borderColor="brand.accent"
+                          bg="brand.800"
                         />
                         <VStack spacing={1} align="start" flex={1}>
                           <Text
                             fontWeight="bold"
-                            color="white"
-                            fontSize="md"
+                            color="text.primary"
+                            fontSize="lg"
                             noOfLines={1}
                           >
                             {user.displayName || user.email}
                           </Text>
-                          <Text fontSize="xs" color="gray.300" noOfLines={1}>
+                          <Text
+                            fontSize="sm"
+                            color="text.secondary"
+                            noOfLines={1}
+                          >
                             @{user.username || user.email.split("@")[0]}
                           </Text>
-                          <HStack spacing={2} mt={1}>
+                          <HStack spacing={2} pt={1}>
                             <Badge
                               colorScheme={
-                                user.role === "admin" ? "red" : "blue"
+                                user.role === "admin" ? "purple" : "blue"
                               }
-                              size="sm"
-                              variant="solid"
+                              variant="subtle"
                               fontSize="xs"
                             >
                               {user.role === "admin" ? "👑 Admin" : "👤 User"}
@@ -314,8 +319,7 @@ export default function Header() {
                             {user.isVerified && (
                               <Badge
                                 colorScheme="green"
-                                size="sm"
-                                variant="solid"
+                                variant="subtle"
                                 fontSize="xs"
                               >
                                 ✓ Verified
@@ -326,8 +330,10 @@ export default function Header() {
                       </HStack>
                     </Box>
 
-                    {/* Menu Items - Restored */}
-                    <VStack spacing={1} px={2}>
+                    <MenuDivider my={2} borderColor="brand.700" />
+
+                    {/* Menu Items - Redesigned */}
+                    <VStack spacing={1} px={0}>
                       <MenuItem
                         onClick={() => navigate("/profile")}
                         icon={<FiUser size="16px" />}
@@ -367,8 +373,12 @@ export default function Header() {
                             onClick={() => navigate("/admin")}
                             icon={<FiSettings size="16px" />}
                             {...menuItemProps}
-                            _hover={{ bg: "red.800", color: "red.300" }}
-                            color="red.400"
+                            bg="rgba(159, 122, 234, 0.1)"
+                            color="purple.300"
+                            _hover={{
+                              bg: "purple.600",
+                              color: "white",
+                            }}
                           >
                             Bảng điều khiển Admin
                           </MenuItem>
@@ -380,8 +390,9 @@ export default function Header() {
                         onClick={handleLogout}
                         icon={<FiLogOut size="16px" />}
                         {...menuItemProps}
-                        _hover={{ bg: "red.800", color: "red.200" }}
-                        color="red.300"
+                        bg="rgba(229, 62, 62, 0.1)"
+                        color="red.400"
+                        _hover={{ bg: "red.600", color: "white" }}
                       >
                         Đăng Xuất
                       </MenuItem>

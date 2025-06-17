@@ -86,6 +86,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || "";
     const role = req.query.role || "";
+    const status = req.query.status || "";
 
     const skip = (page - 1) * limit;
 
@@ -100,6 +101,9 @@ const getAllUsers = asyncHandler(async (req, res) => {
     }
     if (role) {
       query.role = role;
+    }
+    if (status) {
+      query.status = status;
     }
 
     const users = await User.find(query)

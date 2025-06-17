@@ -97,6 +97,7 @@ const AdminUsers = () => {
     limit: 10,
     search: "",
     role: "",
+    status: "",
   });
   const [selectedUser, setSelectedUser] = useState(null);
 
@@ -150,6 +151,14 @@ const AdminUsers = () => {
     setFilters({
       ...filters,
       role: e.target.value,
+      page: 1,
+    });
+  };
+
+  const handleStatusFilter = (e) => {
+    setFilters({
+      ...filters,
+      status: e.target.value,
       page: 1,
     });
   };
@@ -331,7 +340,7 @@ const AdminUsers = () => {
             </HStack>
           </CardHeader>
           <CardBody pt={0}>
-            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4}>
               <Box>
                 <Text fontSize="sm" fontWeight="medium" color="gray.600" mb={2}>
                   Tìm kiếm
@@ -378,6 +387,29 @@ const AdminUsers = () => {
 
               <Box>
                 <Text fontSize="sm" fontWeight="medium" color="gray.600" mb={2}>
+                  Trạng thái
+                </Text>
+                <Select
+                  value={filters.status}
+                  onChange={handleStatusFilter}
+                  bg={cardBg}
+                  border="1px"
+                  borderColor="gray.300"
+                  _focus={{
+                    borderColor: "blue.500",
+                    shadow: "outline",
+                  }}
+                >
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="active">Hoạt động</option>
+                  <option value="suspended">Tạm khóa</option>
+                  <option value="banned">Cấm</option>
+                  <option value="inactive">Vô hiệu</option>
+                </Select>
+              </Box>
+
+              <Box>
+                <Text fontSize="sm" fontWeight="medium" color="gray.600" mb={2}>
                   Hiển thị
                 </Text>
                 <Select
@@ -405,7 +437,7 @@ const AdminUsers = () => {
             </SimpleGrid>
 
             {/* Active Filters Display */}
-            {(filters.search || filters.role) && (
+            {(filters.search || filters.role || filters.status) && (
               <Box mt={4} pt={4} borderTop="1px" borderColor="gray.200">
                 <HStack spacing={2} flexWrap="wrap">
                   <Text fontSize="sm" fontWeight="medium" color="gray.600">
@@ -433,6 +465,22 @@ const AdminUsers = () => {
                       />
                     </Tag>
                   )}
+                  {filters.status && (
+                    <Tag
+                      size="md"
+                      colorScheme={getStatusBadgeColor(filters.status)}
+                      variant="subtle"
+                    >
+                      <TagLabel>
+                        Trạng thái: {getStatusText(filters.status)}
+                      </TagLabel>
+                      <TagCloseButton
+                        onClick={() =>
+                          setFilters({ ...filters, status: "", page: 1 })
+                        }
+                      />
+                    </Tag>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"
@@ -441,6 +489,7 @@ const AdminUsers = () => {
                       setFilters({
                         search: "",
                         role: "",
+                        status: "",
                         limit: 10,
                         page: 1,
                       })

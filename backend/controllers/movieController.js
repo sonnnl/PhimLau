@@ -60,50 +60,58 @@ const getOrCreateMovieMetadata = async (movieDataFromApi) => {
 const getLatestMovies = asyncHandler(async (req, res) => {
   const { page = 1, limit = 18 } = req.query;
   try {
-    // Gọi API bên ngoài để lấy danh sách phim mới
     const response = await axios.get(
       `${PHIM_API_DOMAIN}/danh-sach/phim-moi-cap-nhat?page=${page}&limit=${limit}`
     );
 
-    // Kiểm tra cấu trúc response từ API
     if (response.data && response.data.status && response.data.items) {
-      // Bổ sung metadata từ database local (ratings, reviews)
-      const moviesWithMetadata = await Promise.all(
-        response.data.items.map(async (movie) => {
+      // API danh sách chỉ trả về thông tin cơ bản.
+      // Để có đầy đủ thông tin cho MovieCard, ta cần lấy chi tiết từng phim.
+      const detailedMovies = await Promise.all(
+        response.data.items.map(async (basicMovie) => {
           try {
-            // Tìm metadata từ database local
-            const movieMetadata = await MovieMetadata.findById(movie._id);
-            return {
-              ...movie,
-              movieMetadata: movieMetadata || {
-                appAverageRating: 0,
-                appRatingCount: 0,
-              },
-            };
-          } catch (err) {
-            // Nếu lỗi, trả về movie không có metadata
-            return {
-              ...movie,
-              movieMetadata: {
-                appAverageRating: 0,
-                appRatingCount: 0,
-              },
-            };
+            const detailResponse = await axios.get(
+              `${PHIM_API_DOMAIN}/phim/${basicMovie.slug}`
+            );
+            if (detailResponse.data && detailResponse.data.movie) {
+              const movieMetadata = await getOrCreateMovieMetadata(
+                detailResponse.data.movie
+              );
+              return {
+                ...detailResponse.data.movie, // Dữ liệu đầy đủ từ API chi tiết
+                movieMetadata: movieMetadata,
+              };
+            }
+          } catch (e) {
+            console.error(
+              `Failed to fetch details for ${basicMovie.slug}:`,
+              e.message
+            );
           }
+          // Trả về thông tin cơ bản nếu không lấy được chi tiết
+          const movieMetadata = await MovieMetadata.findById(basicMovie._id);
+          return {
+            ...basicMovie,
+            movieMetadata: movieMetadata || {
+              appAverageRating: 0,
+              appRatingCount: 0,
+            },
+          };
         })
       );
 
-      // Xử lý thông tin phân trang từ API response
+      // Lọc bỏ những phim không lấy được chi tiết (null)
+      const validMovies = detailedMovies.filter(Boolean);
+
       const paginationData =
         response.data.params?.pagination || response.data.pagination || null;
 
       res.json({
-        items: moviesWithMetadata,
+        items: validMovies,
         pagination: paginationData,
         appParams: response.data.appParams,
       });
     } else {
-      // API response không đúng cấu trúc mong đợi
       res.status(404).json({
         message:
           "Không tìm thấy dữ liệu phim mới cập nhật hoặc cấu trúc API thay đổi.",
