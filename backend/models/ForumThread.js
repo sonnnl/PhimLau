@@ -139,11 +139,6 @@ const ForumThreadSchema = new mongoose.Schema(
           max: 2030,
           default: null,
         },
-        // Đánh dấu đây có phải phim chính không (primary movie)
-        isPrimary: {
-          type: Boolean,
-          default: false,
-        },
         // ⭐ Rating information from MovieMetadata
         appAverageRating: {
           type: Number,

@@ -861,7 +861,6 @@ const ForumThreadDetailPage = () => {
                   <ForumMovieCard
                     key={movie.movieId || index}
                     movieMetadata={movie}
-                    showPrimaryBadge={true}
                   />
                 ))}
               </SimpleGrid>

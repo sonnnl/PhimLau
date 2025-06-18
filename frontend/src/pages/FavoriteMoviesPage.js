@@ -24,7 +24,7 @@ import { ChevronRightIcon } from "@chakra-ui/icons";
 import { FaHeart } from "react-icons/fa";
 
 const FavoriteMoviesPage = () => {
-  const [movies, setMovies] = useState([]);
+  const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState(null);
@@ -37,7 +37,7 @@ const FavoriteMoviesPage = () => {
       setError(null);
       try {
         const data = await favoriteService.getMyFavorites(currentPage, 18);
-        setMovies(data.items || []);
+        setFavorites(data.items || []);
         setPagination(data.pagination || null);
         if (!data.items || data.items.length === 0) {
           setError(
@@ -92,7 +92,7 @@ const FavoriteMoviesPage = () => {
             speed="0.65s"
           />
         </Center>
-      ) : error && movies.length === 0 ? (
+      ) : error && favorites.length === 0 ? (
         <Alert
           status="info"
           variant="subtle"
@@ -118,11 +118,11 @@ const FavoriteMoviesPage = () => {
             columns={{ base: 2, sm: 3, md: 4, lg: 5, xl: 6 }}
             spacing={{ base: 4, md: 6 }}
           >
-            {movies.map((movie) => (
+            {favorites.map((favorite) => (
               <ForumMovieCard
-                key={movie.movieId}
-                movieMetadata={movie}
-                showPrimaryBadge={true}
+                key={favorite._id}
+                movieMetadata={favorite}
+                showPrimaryBadge={false}
               />
             ))}
           </SimpleGrid>

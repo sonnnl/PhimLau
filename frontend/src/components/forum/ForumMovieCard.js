@@ -17,7 +17,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { FiCalendar, FiFilm, FiEye, FiHeart } from "react-icons/fi";
 import { StarIcon } from "@chakra-ui/icons";
 
-const ForumMovieCard = ({ movieMetadata, showPrimaryBadge = true }) => {
+const ForumMovieCard = ({ movieMetadata }) => {
   if (!movieMetadata) {
     return null;
   }
@@ -125,22 +125,6 @@ const ForumMovieCard = ({ movieMetadata, showPrimaryBadge = true }) => {
         flexDirection="column"
         position="relative"
       >
-        {/* Primary Badge */}
-        {showPrimaryBadge && movieMetadata.isPrimary && (
-          <Badge
-            position="absolute"
-            top="8px"
-            right="8px"
-            colorScheme="orange"
-            size="sm"
-            borderRadius="full"
-            zIndex={2}
-            fontSize="xs"
-          >
-            Chính
-          </Badge>
-        )}
-
         <AspectRatio ratio={2 / 3} width="100%">
           <Image
             src={imageUrl}

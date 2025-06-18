@@ -179,6 +179,45 @@ const getThreadBySlug = asyncHandler(async (req, res) => {
     }
   }
 
+  // ===== 🎬 POPULATE MOVIE METADATA WITH FRESH DATA =====
+  // If the thread has movie metadata, fetch the latest data for each movie
+  if (thread && thread.movieMetadata && thread.movieMetadata.length > 0) {
+    // Extract all movie IDs from the thread's metadata
+    const movieIds = thread.movieMetadata.map((meta) => meta.movieId);
+
+    // Fetch all the corresponding full movie documents from the database
+    const freshMovies = await MovieMetadata.find({
+      _id: { $in: movieIds },
+    }).lean();
+
+    // Create a map for quick lookup: { movieId -> movieDocument }
+    const movieMap = freshMovies.reduce((map, movie) => {
+      map[movie._id.toString()] = movie;
+      return map;
+    }, {});
+
+    // Replace the stale metadata with the fresh, full movie data
+    thread.movieMetadata = thread.movieMetadata.map((meta) => {
+      const freshData = movieMap[meta.movieId];
+      if (freshData) {
+        return {
+          ...meta.toObject(), // Keep original data like _id
+          movieId: freshData._id,
+          movieSlug: freshData.slug,
+          movieTitle: freshData.name,
+          moviePosterUrl: freshData.posterUrl,
+          movieType: freshData.type,
+          movieYear: freshData.year,
+          appAverageRating: freshData.appAverageRating || 0,
+          appRatingCount: freshData.appRatingCount || 0,
+          appTotalViews: freshData.appTotalViews || 0,
+          appTotalFavorites: freshData.appTotalFavorites || 0,
+        };
+      }
+      return meta; // Fallback to stale data if not found for some reason
+    });
+  }
+
   // ===== 📈 TĂNG VIEW COUNT (chỉ với approved threads) =====
   if (thread.moderationStatus === "approved") {
     await ForumThread.findByIdAndUpdate(thread._id, {
@@ -392,9 +431,10 @@ const createThread = asyncHandler(async (req, res) => {
       for (const movie of movieMetadata) {
         if (!movie.movieId) continue;
 
-        // Use the centralized utility function
-        const newMetadata = await getOrCreateMovieMetadata({
+        // Use the centralized utility function to get or create the basic movie doc
+        const basicMovieDoc = await getOrCreateMovieMetadata({
           _id: movie.movieId,
+          // Pass other details in case creation is needed
           slug: movie.movieSlug,
           name: movie.movieTitle,
           poster_url: movie.moviePosterUrl,
@@ -403,20 +443,27 @@ const createThread = asyncHandler(async (req, res) => {
           category: movie.category,
         });
 
-        if (newMetadata) {
-          processedMovieMetadata.push({
-            movieId: newMetadata._id,
-            movieSlug: newMetadata.slug,
-            movieTitle: newMetadata.name?.substring(0, 200) || "Unknown Movie",
-            moviePosterUrl: newMetadata.posterUrl,
-            movieType: newMetadata.type,
-            movieYear: newMetadata.year,
-            isPrimary: movie.isPrimary || false,
-            appAverageRating: newMetadata.appAverageRating || 0,
-            appRatingCount: newMetadata.appRatingCount || 0,
-            appTotalViews: newMetadata.appTotalViews || 0,
-            appTotalFavorites: newMetadata.appTotalFavorites || 0,
-          });
+        if (basicMovieDoc) {
+          // Now, fetch the full document from our DB to get all stats
+          const fullMovieDoc = await MovieMetadata.findById(
+            basicMovieDoc._id
+          ).lean();
+
+          if (fullMovieDoc) {
+            processedMovieMetadata.push({
+              movieId: fullMovieDoc._id.toString(), // Ensure it's a string
+              movieSlug: fullMovieDoc.slug,
+              movieTitle:
+                fullMovieDoc.name?.substring(0, 200) || "Unknown Movie",
+              moviePosterUrl: fullMovieDoc.posterUrl,
+              movieType: fullMovieDoc.type,
+              movieYear: fullMovieDoc.year,
+              appAverageRating: fullMovieDoc.appAverageRating || 0,
+              appRatingCount: fullMovieDoc.appRatingCount || 0,
+              appTotalViews: fullMovieDoc.appTotalViews || 0,
+              appTotalFavorites: fullMovieDoc.appTotalFavorites || 0,
+            });
+          }
         }
       }
 

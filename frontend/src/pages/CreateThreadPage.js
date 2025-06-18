@@ -153,7 +153,7 @@ const CreateThreadPage = () => {
 
       // Add movie metadata if selected (now supports multiple movies)
       if (selectedMovies.length > 0) {
-        threadData.movieMetadata = selectedMovies.map((movie, index) => ({
+        threadData.movieMetadata = selectedMovies.map((movie) => ({
           movieId: movie._id,
           movieSlug: movie.slug,
           movieTitle: movie.name,
@@ -161,7 +161,6 @@ const CreateThreadPage = () => {
           movieType: movie.type,
           movieYear: movie.year,
           category: movie.category,
-          isPrimary: index === 0, // First movie is primary
         }));
         threadData.isMovieDiscussion = true; // Mark as movie discussion
       }
