@@ -139,13 +139,19 @@ const getThreadBySlug = asyncHandler(async (req, res) => {
     slug,
     isDeleted: false, // ✅ Không hiển thị thread đã xóa
   })
-    .populate("author", "displayName avatarUrl")
+    .populate({
+      path: "author",
+      select: "username displayName avatarUrl role trustLevel",
+    })
     .populate({
       path: "category",
       select: "name slug isActive",
       match: { isActive: true }, // Chỉ populate nếu category đang hoạt động
     })
-    .populate("lastReplyAuthor", "displayName avatarUrl");
+    .populate({
+      path: "lastReplyAuthor",
+      select: "username displayName avatarUrl role trustLevel",
+    });
 
   // 🔍 DETAILED ERROR HANDLING
   if (!thread) {
@@ -244,7 +250,17 @@ const getThreadBySlug = asyncHandler(async (req, res) => {
         localField: "author",
         foreignField: "_id",
         as: "author",
-        pipeline: [{ $project: { displayName: 1, avatarUrl: 1 } }],
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              displayName: 1,
+              avatarUrl: 1,
+              role: 1,
+              trustLevel: 1,
+            },
+          },
+        ],
       },
     },
 
@@ -262,7 +278,17 @@ const getThreadBySlug = asyncHandler(async (req, res) => {
               localField: "author",
               foreignField: "_id",
               as: "author",
-              pipeline: [{ $project: { displayName: 1, avatarUrl: 1 } }],
+              pipeline: [
+                {
+                  $project: {
+                    username: 1,
+                    displayName: 1,
+                    avatarUrl: 1,
+                    role: 1,
+                    trustLevel: 1,
+                  },
+                },
+              ],
             },
           },
           {

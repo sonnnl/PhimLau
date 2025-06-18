@@ -6,13 +6,6 @@ import {
   CardBody,
   CardHeader,
   Heading,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
   Button,
   HStack,
   VStack,
@@ -64,6 +57,7 @@ import {
   TagCloseButton,
   IconButton,
   Switch,
+  StackDivider,
 } from "@chakra-ui/react";
 import {
   FiSearch,
@@ -118,6 +112,7 @@ const AdminUsers = () => {
   const cancelRef = React.useRef();
   const toast = useToast();
   const cardBg = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.600");
 
   useEffect(() => {
     fetchUsers();
@@ -618,223 +613,241 @@ const AdminUsers = () => {
                   overflow="hidden"
                   transition="all 0.2s"
                   _hover={{ shadow: "lg", transform: "translateY(-2px)" }}
+                  display="flex"
+                  flexDirection="column"
+                  h="full"
                 >
-                  <CardBody p={6}>
-                    <VStack spacing={4} align="stretch">
-                      {/* User Avatar & Basic Info */}
-                      <HStack spacing={4}>
-                        <Avatar
-                          size="lg"
-                          src={user.avatarUrl}
-                          name={user.displayName || user.username}
-                          bg="blue.500"
-                        />
-                        <VStack align="start" flex={1} spacing={1}>
-                          <HStack spacing={2} align="center">
-                            <Text fontWeight="bold" fontSize="lg">
+                  <CardBody p={5} as={Flex} direction="column" h="full">
+                    {/* User Avatar & Basic Info */}
+                    <HStack spacing={4} mb={4}>
+                      <Avatar
+                        size="lg"
+                        src={user.avatarUrl}
+                        name={user.displayName || user.username}
+                        bg="blue.500"
+                      />
+                      <VStack align="start" flex={1} spacing={0.5}>
+                        <HStack spacing={2} align="center">
+                          <Tooltip
+                            label={user.displayName || user.username}
+                            placement="top"
+                          >
+                            <Text
+                              fontWeight="bold"
+                              fontSize="lg"
+                              isTruncated
+                              maxW="150px"
+                            >
                               {user.displayName || user.username}
                             </Text>
-                            <Badge
-                              colorScheme={getRoleBadgeColor(user.role)}
-                              variant="subtle"
-                              fontSize="xs"
-                            >
-                              {user.role === "admin" ? "Admin" : "User"}
-                            </Badge>
-                          </HStack>
-                          <Text fontSize="sm" color="gray.500">
-                            @{user.username}
-                          </Text>
-                          <HStack spacing={1}>
+                          </Tooltip>
+                          <Badge
+                            colorScheme={getRoleBadgeColor(user.role)}
+                            variant="subtle"
+                            fontSize="xs"
+                            px={2}
+                            py={0.5}
+                            borderRadius="md"
+                          >
+                            {user.role === "admin" ? "Admin" : "User"}
+                          </Badge>
+                        </HStack>
+                        <Tooltip label={user.email}>
+                          <HStack spacing={1.5} align="center">
                             <Icon as={FiMail} size="12px" color="gray.400" />
-                            <Text fontSize="xs" color="gray.500" isTruncated>
+                            <Text
+                              fontSize="xs"
+                              color="gray.500"
+                              isTruncated
+                              maxW="180px"
+                            >
                               {user.email}
                             </Text>
                           </HStack>
-                        </VStack>
-                      </HStack>
+                        </Tooltip>
+                      </VStack>
+                    </HStack>
 
-                      <Divider />
-
-                      {/* User Stats */}
-                      <SimpleGrid columns={2} spacing={4}>
-                        <VStack spacing={1}>
-                          <Text
-                            fontSize="sm"
-                            fontWeight="medium"
-                            color="gray.600"
-                          >
-                            Tham gia
-                          </Text>
-                          <HStack spacing={1}>
-                            <Icon
-                              as={FiCalendar}
-                              size="12px"
-                              color="gray.400"
-                            />
-                            <Text fontSize="xs" color="gray.500">
-                              {formatDate(user.createdAt)}
-                            </Text>
-                          </HStack>
-                        </VStack>
-                        <VStack spacing={1}>
-                          <Text
-                            fontSize="sm"
-                            fontWeight="medium"
-                            color="gray.600"
-                          >
-                            Trạng thái
-                          </Text>
-                          <Badge
-                            colorScheme={getStatusBadgeColor(user.status)}
-                            variant="solid"
-                            fontSize="xs"
-                          >
-                            {getStatusText(user.status)}
-                          </Badge>
-                        </VStack>
-                      </SimpleGrid>
-
-                      <Divider />
-
-                      {/* Trust Level & Auto Approval */}
-                      <SimpleGrid columns={2} spacing={4}>
-                        <VStack align="start" spacing={1}>
-                          <Text
-                            fontSize="sm"
-                            fontWeight="medium"
-                            color="gray.600"
-                          >
-                            Độ tin cậy
-                          </Text>
-                          <Select
-                            size="sm"
-                            value={user.trustLevel}
-                            onChange={(e) =>
-                              handleTrustLevelUpdate(user._id, e.target.value)
-                            }
-                            maxW="120px"
-                            fontSize="xs"
-                          >
-                            <option value="new">New</option>
-                            <option value="basic">Basic</option>
-                            <option value="trusted">Trusted</option>
-                            <option value="moderator">Moderator</option>
-                          </Select>
-                        </VStack>
-                        <FormControl
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="space-between"
+                    {/* User Details */}
+                    <VStack
+                      divider={<StackDivider />}
+                      spacing={3}
+                      align="stretch"
+                      my={4}
+                    >
+                      <HStack justify="space-between">
+                        <Text
+                          fontSize="sm"
+                          fontWeight="medium"
+                          color="gray.600"
                         >
-                          <FormLabel
-                            htmlFor={`auto-approval-${user._id}`}
-                            mb="0"
-                            fontSize="sm"
-                            fontWeight="medium"
-                            color="gray.600"
-                          >
-                            Tự động duyệt?
-                          </FormLabel>
-                          <Switch
-                            id={`auto-approval-${user._id}`}
-                            isChecked={user.autoApprovalEnabled}
-                            onChange={() =>
-                              handleToggleAutoApproval(
-                                user._id,
-                                user.autoApprovalEnabled
-                              )
-                            }
-                            colorScheme="green"
-                          />
-                        </FormControl>
-                      </SimpleGrid>
-
-                      <Divider />
-
-                      {/* Action Buttons */}
-                      <HStack justify="space-between" align="center">
-                        <VStack align="start" spacing={0}>
-                          <Text fontSize="xs" color="gray.500">
-                            Vai trò
-                          </Text>
-                          <Select
-                            size="sm"
-                            value={user.role}
-                            onChange={(e) =>
-                              handleRoleUpdate(user._id, e.target.value)
-                            }
-                            maxW="100px"
-                            fontSize="xs"
-                          >
-                            <option value="user">User</option>
-                            <option value="admin">Admin</option>
-                          </Select>
-                        </VStack>
-
-                        <Menu>
-                          <MenuButton
-                            as={IconButton}
-                            icon={<Icon as={FiSettings} />}
-                            size="sm"
-                            variant="ghost"
-                            colorScheme="gray"
-                          />
-                          <MenuList>
-                            {user.status !== "active" && (
-                              <MenuItem
-                                icon={
-                                  <Icon as={FiCheckCircle} color="green.500" />
-                                }
-                                onClick={() =>
-                                  handleStatusUpdate(user._id, "active")
-                                }
-                              >
-                                Kích hoạt
-                              </MenuItem>
-                            )}
-                            {user.status !== "suspended" && (
-                              <MenuItem
-                                icon={<Icon as={FiClock} color="yellow.500" />}
-                                onClick={() =>
-                                  openActionModal(user, "suspended")
-                                }
-                              >
-                                Tạm khóa
-                              </MenuItem>
-                            )}
-                            {user.status !== "banned" && (
-                              <MenuItem
-                                icon={<Icon as={FiXCircle} color="red.500" />}
-                                onClick={() => openActionModal(user, "banned")}
-                              >
-                                Cấm vĩnh viễn
-                              </MenuItem>
-                            )}
-                            {user.status !== "inactive" && (
-                              <MenuItem
-                                icon={
-                                  <Icon as={FiAlertTriangle} color="gray.500" />
-                                }
-                                onClick={() =>
-                                  handleStatusUpdate(user._id, "inactive")
-                                }
-                              >
-                                Vô hiệu hóa
-                              </MenuItem>
-                            )}
-                            <MenuDivider />
-                            <MenuItem
-                              icon={<Icon as={FiTrash2} color="red.500" />}
-                              onClick={() => openDeleteDialog(user)}
-                              color="red.500"
-                            >
-                              Xóa tài khoản
-                            </MenuItem>
-                          </MenuList>
-                        </Menu>
+                          Trạng thái
+                        </Text>
+                        <Badge
+                          colorScheme={getStatusBadgeColor(user.status)}
+                          variant="solid"
+                          fontSize="xs"
+                          px={2}
+                          py={0.5}
+                          borderRadius="md"
+                        >
+                          {getStatusText(user.status)}
+                        </Badge>
                       </HStack>
+                      <HStack justify="space-between">
+                        <Text
+                          fontSize="sm"
+                          fontWeight="medium"
+                          color="gray.600"
+                        >
+                          Tham gia
+                        </Text>
+                        <HStack spacing={1.5}>
+                          <Icon as={FiCalendar} size="12px" color="gray.400" />
+                          <Text fontSize="sm" color="gray.500">
+                            {formatDate(user.createdAt)}
+                          </Text>
+                        </HStack>
+                      </HStack>
+                      <HStack justify="space-between">
+                        <Text
+                          fontSize="sm"
+                          fontWeight="medium"
+                          color="gray.600"
+                        >
+                          Độ tin cậy
+                        </Text>
+                        <Select
+                          size="xs"
+                          value={user.trustLevel}
+                          onChange={(e) =>
+                            handleTrustLevelUpdate(user._id, e.target.value)
+                          }
+                          maxW="110px"
+                          fontSize="xs"
+                          borderRadius="md"
+                        >
+                          <option value="new">New</option>
+                          <option value="basic">Basic</option>
+                          <option value="trusted">Trusted</option>
+                          <option value="moderator">Moderator</option>
+                        </Select>
+                      </HStack>
+                      <FormControl as={HStack} justify="space-between">
+                        <FormLabel
+                          htmlFor={`auto-approval-${user._id}`}
+                          m="0"
+                          fontSize="sm"
+                          fontWeight="medium"
+                          color="gray.600"
+                        >
+                          Tự động duyệt
+                        </FormLabel>
+                        <Switch
+                          id={`auto-approval-${user._id}`}
+                          isChecked={user.autoApprovalEnabled}
+                          onChange={() =>
+                            handleToggleAutoApproval(
+                              user._id,
+                              user.autoApprovalEnabled
+                            )
+                          }
+                          colorScheme="green"
+                          size="sm"
+                        />
+                      </FormControl>
                     </VStack>
+
+                    <Spacer />
+
+                    {/* Action Buttons */}
+                    <HStack
+                      justify="space-between"
+                      align="center"
+                      pt={4}
+                      borderTop="1px"
+                      borderColor={borderColor}
+                    >
+                      <VStack align="start" spacing={1}>
+                        <Text fontSize="xs" color="gray.500">
+                          Vai trò
+                        </Text>
+                        <Select
+                          size="sm"
+                          value={user.role}
+                          onChange={(e) =>
+                            handleRoleUpdate(user._id, e.target.value)
+                          }
+                          maxW="100px"
+                          fontSize="xs"
+                          borderRadius="md"
+                        >
+                          <option value="user">User</option>
+                          <option value="admin">Admin</option>
+                        </Select>
+                      </VStack>
+
+                      <Menu>
+                        <MenuButton
+                          as={IconButton}
+                          icon={<FiMoreHorizontal />}
+                          size="sm"
+                          variant="ghost"
+                          colorScheme="gray"
+                          aria-label="Tùy chọn"
+                        />
+                        <MenuList>
+                          {user.status !== "active" && (
+                            <MenuItem
+                              icon={
+                                <Icon as={FiCheckCircle} color="green.500" />
+                              }
+                              onClick={() =>
+                                handleStatusUpdate(user._id, "active")
+                              }
+                            >
+                              Kích hoạt
+                            </MenuItem>
+                          )}
+                          {user.status !== "suspended" && (
+                            <MenuItem
+                              icon={<Icon as={FiClock} color="yellow.500" />}
+                              onClick={() => openActionModal(user, "suspended")}
+                            >
+                              Tạm khóa
+                            </MenuItem>
+                          )}
+                          {user.status !== "banned" && (
+                            <MenuItem
+                              icon={<Icon as={FiXCircle} color="red.500" />}
+                              onClick={() => openActionModal(user, "banned")}
+                            >
+                              Cấm vĩnh viễn
+                            </MenuItem>
+                          )}
+                          {user.status !== "inactive" && (
+                            <MenuItem
+                              icon={
+                                <Icon as={FiAlertTriangle} color="gray.500" />
+                              }
+                              onClick={() =>
+                                handleStatusUpdate(user._id, "inactive")
+                              }
+                            >
+                              Vô hiệu hóa
+                            </MenuItem>
+                          )}
+                          <MenuDivider />
+                          <MenuItem
+                            icon={<Icon as={FiTrash2} color="red.500" />}
+                            onClick={() => openDeleteDialog(user)}
+                            color="red.500"
+                          >
+                            Xóa tài khoản
+                          </MenuItem>
+                        </MenuList>
+                      </Menu>
+                    </HStack>
                   </CardBody>
                 </Card>
               ))}

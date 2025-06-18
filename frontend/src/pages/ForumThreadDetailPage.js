@@ -37,6 +37,7 @@ import {
   MenuList,
   MenuItem,
   SimpleGrid,
+  Badge,
 } from "@chakra-ui/react";
 import {
   getThreadBySlug,
@@ -54,6 +55,10 @@ import {
   FiFlag,
   FiMoreVertical,
   FiTrash2,
+  FiUser,
+  FiActivity,
+  FiShield,
+  FiStar,
 } from "react-icons/fi";
 import { useAuth } from "../contexts/AuthContext";
 import LikeButton from "../components/forum/LikeButton";
@@ -73,6 +78,27 @@ const formatDate = (dateString) => {
     });
   } catch (e) {
     return dateString;
+  }
+};
+
+const getTrustLevelInfo = (level) => {
+  switch (level) {
+    case "new":
+      return { label: "Thành viên mới", color: "gray" };
+    case "basic":
+      return { label: "Thành viên cơ bản", color: "blue" };
+    case "active":
+      return { label: "Thành viên tích cực", color: "green" };
+    case "trusted":
+      return { label: "Thành viên tin cậy", color: "purple" };
+    case "veteran":
+      return { label: "Thành viên kỳ cựu", color: "orange" };
+    case "moderator":
+      return { label: "Điều hành viên", color: "yellow" };
+    case "admin":
+      return { label: "Quản trị viên", color: "red" };
+    default:
+      return { label: "Chưa phân loại", color: "gray" };
   }
 };
 
@@ -493,6 +519,15 @@ const Reply = ({
           >
             {reply.author?.displayName || "Người dùng ẩn danh"}
           </Link>
+          {reply.author?.trustLevel && (
+            <Badge
+              size="xs"
+              variant="solid"
+              colorScheme={getTrustLevelInfo(reply.author.trustLevel).color}
+            >
+              {getTrustLevelInfo(reply.author.trustLevel).label}
+            </Badge>
+          )}
           <Text>• {formatDate(reply.createdAt)}</Text>
         </HStack>
 
@@ -1003,6 +1038,15 @@ const ForumThreadDetailPage = () => {
             >
               {thread.author?.displayName || "Người dùng ẩn danh"}
             </Link>
+            {thread.author?.trustLevel && (
+              <Badge
+                variant="solid"
+                size="sm"
+                colorScheme={getTrustLevelInfo(thread.author.trustLevel).color}
+              >
+                {getTrustLevelInfo(thread.author.trustLevel).label}
+              </Badge>
+            )}
             <HStack spacing={1}>
               <Icon as={FiClock} />
               <Text>{formatDate(thread.createdAt)}</Text>

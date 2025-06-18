@@ -3,6 +3,7 @@ import User from "../models/UserModel.js";
 import Review from "../models/ReviewModel.js";
 import ForumThread from "../models/ForumThread.js";
 import ForumReply from "../models/ForumReply.js";
+import Like from "../models/LikeModel.js";
 import bcrypt from "bcryptjs";
 import { cloudinary } from "../config/cloudinary.js";
 
@@ -23,17 +24,36 @@ export const getUserProfile = asyncHandler(async (req, res) => {
     }
 
     // Get user statistics
-    const [totalReviews, totalThreads, totalReplies, reviews, averageRating] =
-      await Promise.all([
-        Review.countDocuments({ user: userId }),
-        ForumThread.countDocuments({ author: userId }),
-        ForumReply.countDocuments({ author: userId }),
-        Review.find({ user: userId }).select("rating"),
-        Review.aggregate([
-          { $match: { user: userId } },
-          { $group: { _id: null, avgRating: { $avg: "$rating" } } },
-        ]),
-      ]);
+    const [
+      totalReviews,
+      totalThreads,
+      totalReplies,
+      reviews,
+      averageRating,
+      userThreads,
+      userReplies,
+    ] = await Promise.all([
+      Review.countDocuments({ user: userId }),
+      ForumThread.countDocuments({ author: userId }),
+      ForumReply.countDocuments({ author: userId }),
+      Review.find({ user: userId }).select("rating"),
+      Review.aggregate([
+        { $match: { user: userId } },
+        { $group: { _id: null, avgRating: { $avg: "$rating" } } },
+      ]),
+      ForumThread.find({ author: userId }).select("_id"),
+      ForumReply.find({ author: userId }).select("_id"),
+    ]);
+
+    const threadIds = userThreads.map((t) => t._id);
+    const replyIds = userReplies.map((r) => r._id);
+
+    const totalLikes = await Like.countDocuments({
+      $or: [
+        { targetType: "thread", targetId: { $in: threadIds } },
+        { targetType: "reply", targetId: { $in: replyIds } },
+      ],
+    });
 
     // Get recent reviews (last 5) - filter out reviews with deleted movies
     const recentReviews = await Review.find({ user: userId })
@@ -56,6 +76,7 @@ export const getUserProfile = asyncHandler(async (req, res) => {
       totalThreads: totalThreads || 0,
       totalReplies: totalReplies || 0,
       averageRating: averageRating.length > 0 ? averageRating[0].avgRating : 0,
+      totalLikes: totalLikes || 0,
     };
 
     res.json({
