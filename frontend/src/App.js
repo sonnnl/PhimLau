@@ -90,19 +90,19 @@ function App() {
       <ColorModeScript initialColorMode={customTheme.config.initialColorMode} />
       <AuthProvider>
         <Router>
-          <Suspense
-            fallback={
-              <Center h="100vh" bg="background.primary">
-                <Spinner
-                  size="xl"
-                  color="brand.accent"
-                  thickness="4px"
-                  speed="0.65s"
-                />
-              </Center>
-            }
-          >
-            <MainLayout>
+          <MainLayout>
+            <Suspense
+              fallback={
+                <Center h="70vh" bg="background.primary">
+                  <Spinner
+                    size="xl"
+                    color="brand.accent"
+                    thickness="4px"
+                    speed="0.65s"
+                  />
+                </Center>
+              }
+            >
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route
@@ -220,8 +220,8 @@ function App() {
                 {/* Fallback route cho các đường dẫn không khớp */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </MainLayout>
-          </Suspense>
+            </Suspense>
+          </MainLayout>
         </Router>
       </AuthProvider>
     </ChakraProvider>
