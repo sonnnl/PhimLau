@@ -1193,6 +1193,15 @@ const applyModerationAction = async (
       }
       break;
 
+    case "user_deactivated": {
+      await User.findByIdAndUpdate(authorId, {
+        status: "inactive",
+      });
+      // Optionally, create a notification for deactivation
+      // await createDeactivationNotification(authorId, reason, adminId);
+      break;
+    }
+
     default:
       // No action or other actions
       break;

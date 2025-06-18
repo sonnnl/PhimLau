@@ -19,6 +19,7 @@ import {
   AlertTitle,
   AlertDescription,
   CloseButton,
+  HStack,
 } from "@chakra-ui/react";
 import { FaGoogle } from "react-icons/fa";
 import { EmailIcon, LockIcon } from "@chakra-ui/icons";
@@ -36,63 +37,70 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [verificationInfo, setVerificationInfo] = useState(null);
-  const [showAlert, setShowAlert] = useState(true);
-  const [hasShownToast, setHasShownToast] = useState(false);
+  const [loginAlert, setLoginAlert] = useState(null); // {type, title, message, details}
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
 
   useEffect(() => {
-    // Kiểm tra xem có thông điệp từ registration không
+    // Kiểm tra xem có thông điệp từ registration, verification, etc.
     if (location.state?.message) {
-      if (location.state.needsVerification) {
-        setVerificationInfo({
-          email: location.state.email,
-          message: location.state.message,
-          showResendOption: location.state.showResendOption,
-        });
-      }
+      setLoginAlert({
+        type: location.state.alertType || "success",
+        title: location.state.title || "Thông báo",
+        message: location.state.message,
+        details: location.state.details,
+      });
 
       // Xóa state để tránh hiển thị lại khi refresh
-      navigate("/login", { replace: true });
+      navigate("/login", { replace: true, state: {} });
     }
 
     // Kiểm tra error từ Google OAuth redirect
     const urlParams = new URLSearchParams(location.search);
     const error = urlParams.get("error");
     const message = urlParams.get("message");
+    const reason = urlParams.get("reason");
+    const expires = urlParams.get("expires");
 
     if (error) {
-      let toastStatus = "error";
-      let toastTitle = "Lỗi Đăng Nhập Google";
+      let alertType = "error";
+      let title = "Lỗi Đăng Nhập Google";
+      let details;
 
       if (error === "account_suspended") {
-        toastStatus = "warning";
-        toastTitle = "⚠️ Tài khoản bị tạm khóa";
+        alertType = "warning";
+        title = "⚠️ Tài khoản bị tạm khóa";
+        if (expires) {
+          details = `Ngày hết hạn: ${new Date(expires).toLocaleString(
+            "vi-VN"
+          )}.`;
+        }
+        if (reason) {
+          details = `${details ? details + " " : ""}Lý do: ${decodeURIComponent(
+            reason
+          )}`;
+        }
       } else if (error === "account_banned") {
-        toastStatus = "error";
-        toastTitle = "🚫 Tài khoản bị cấm";
+        title = "🚫 Tài khoản bị cấm";
+        if (reason) details = `Lý do: ${decodeURIComponent(reason)}`;
       } else if (error === "account_inactive") {
-        toastStatus = "info";
-        toastTitle = "ℹ️ Tài khoản không hoạt động";
+        alertType = "info";
+        title = "ℹ️ Tài khoản không hoạt động";
       }
 
-      toast({
-        title: toastTitle,
-        description: message
-          ? decodeURIComponent(message)
-          : "Đăng nhập Google thất bại",
-        status: toastStatus,
-        duration: 8000,
-        isClosable: true,
+      setLoginAlert({
+        type: alertType,
+        title,
+        message: decodeURIComponent(message),
+        details,
       });
 
       // Xóa error khỏi URL
       navigate("/login", { replace: true });
     }
-  }, [location.state, location.search, navigate, toast]);
+  }, [location.state, location.search, navigate]);
 
   const handleGoogleLogin = () => {
     setIsGoogleLoading(true);
@@ -102,6 +110,8 @@ export default function LoginPage() {
   const handleNormalLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setLoginAlert(null); // Xóa alert cũ khi thử đăng nhập lại
+
     try {
       const { data } = await axios.post(`${BACKEND_API_URL}/auth/login`, {
         emailOrUsername,
@@ -109,62 +119,70 @@ export default function LoginPage() {
       });
       login(data.token);
       toast({
-        title: "Đăng nhập thành công!",
+        title: "🎉 Đăng nhập thành công!",
+        description: "Chào mừng bạn quay trở lại.",
         status: "success",
         duration: 3000,
         isClosable: true,
       });
       navigate("/");
     } catch (err) {
-      const errorMessage =
-        err.response && err.response.data && err.response.data.message
-          ? err.response.data.message
-          : "Đăng nhập thất bại. Vui lòng thử lại.";
+      const errorData = err.response?.data;
+      const message =
+        errorData?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
 
-      const accountStatus = err.response?.data?.accountStatus;
-
-      // Kiểm tra xem có phải lỗi verification không
-      if (err.response?.data?.needsVerification) {
-        setVerificationInfo({
-          email: err.response.data.email,
-          message: errorMessage,
-          showResendOption: true,
+      if (errorData?.needsVerification) {
+        setLoginAlert({
+          type: "warning",
+          title: "Yêu cầu xác nhận Email",
+          message: message,
+          details: (
+            <Button
+              size="sm"
+              mt={2}
+              onClick={() =>
+                navigate("/resend-verification", {
+                  state: { email: errorData.email },
+                })
+              }
+            >
+              Gửi lại email xác nhận
+            </Button>
+          ),
         });
-        setShowAlert(true); // Đảm bảo alert được hiển thị
-      } else {
-        // Xử lý các trạng thái tài khoản bị khóa
-        let toastStatus = "error";
-        let toastTitle = "Lỗi Đăng Nhập";
+      } else if (errorData?.accountStatus) {
+        let alertType = "error";
+        let title = "Lỗi Đăng Nhập";
+        let details = errorData.reason
+          ? `Lý do: ${errorData.reason}`
+          : "Vui lòng liên hệ quản trị viên để biết thêm chi tiết.";
 
-        if (accountStatus === "suspended") {
-          toastStatus = "warning";
-          toastTitle = "⚠️ Tài khoản bị tạm khóa";
-        } else if (accountStatus === "banned") {
-          toastStatus = "error";
-          toastTitle = "🚫 Tài khoản bị cấm";
-        } else if (accountStatus === "inactive") {
-          toastStatus = "info";
-          toastTitle = "ℹ️ Tài khoản không hoạt động";
+        if (errorData.accountStatus === "suspended") {
+          alertType = "warning";
+          title = "⚠️ Tài khoản của bạn đang bị tạm khóa";
+          if (errorData.expires) {
+            details = `Tài khoản bị khóa cho đến: ${new Date(
+              errorData.expires
+            ).toLocaleString("vi-VN")}. ${details}`;
+          }
+        } else if (errorData.accountStatus === "banned") {
+          title = "🚫 Tài khoản của bạn đã bị cấm vĩnh viễn";
+        } else if (errorData.accountStatus === "inactive") {
+          alertType = "info";
+          title = "ℹ️ Tài khoản của bạn đã bị vô hiệu hóa";
         }
 
-        toast({
-          title: toastTitle,
-          description: errorMessage,
-          status: toastStatus,
-          duration: accountStatus ? 8000 : 5000, // Hiển thị lâu hơn cho các lỗi tài khoản
-          isClosable: true,
+        setLoginAlert({ type: alertType, title, message, details });
+      } else {
+        // Lỗi chung (sai mật khẩu, etc.)
+        setLoginAlert({
+          type: "error",
+          title: "Đăng nhập không thành công",
+          message: message,
         });
       }
     }
     setIsLoading(false);
-  };
-
-  const handleResendVerification = () => {
-    if (verificationInfo?.email) {
-      navigate("/resend-verification", {
-        state: { email: verificationInfo.email },
-      });
-    }
   };
 
   return (
@@ -190,37 +208,39 @@ export default function LoginPage() {
           Đăng Nhập
         </Heading>
 
-        {/* Alert cho verification */}
-        {verificationInfo && showAlert && (
-          <Alert status="success" borderRadius="md" mb={4}>
-            <AlertIcon />
-            <Box flex="1">
-              <AlertTitle fontSize="sm">Đăng ký thành công!</AlertTitle>
-              <AlertDescription fontSize="xs">
-                {verificationInfo.message}
-                {verificationInfo.showResendOption && (
-                  <>
-                    <br />
-                    <ChakraLink
-                      color="blue.500"
-                      textDecoration="underline"
-                      fontSize="xs"
-                      onClick={handleResendVerification}
-                      cursor="pointer"
-                      mt={1}
-                    >
-                      Gửi lại email xác nhận
-                    </ChakraLink>
-                  </>
-                )}
-              </AlertDescription>
-            </Box>
+        {/* Alert cho tất cả các thông báo */}
+        {loginAlert && (
+          <Alert
+            status={loginAlert.type}
+            borderRadius="md"
+            mb={4}
+            flexDirection="column"
+            alignItems="flex-start"
+            textAlign="left"
+            position="relative"
+            p={4}
+          >
             <CloseButton
-              alignSelf="flex-start"
-              onClick={() => setShowAlert(false)}
+              position="absolute"
+              right="8px"
+              top="8px"
+              onClick={() => setLoginAlert(null)}
             />
+            <HStack>
+              <AlertIcon />
+              <AlertTitle>{loginAlert.title}</AlertTitle>
+            </HStack>
+            <AlertDescription w="full" pl={8} mt={1}>
+              {loginAlert.message}
+              {loginAlert.details && (
+                <Box mt={2} fontSize="xs" color="text.secondary">
+                  {loginAlert.details}
+                </Box>
+              )}
+            </AlertDescription>
           </Alert>
         )}
+
         <Button
           leftIcon={<Icon as={FaGoogle} />}
           variant="google"
@@ -240,62 +260,64 @@ export default function LoginPage() {
           <Divider />
         </Stack>
 
-        <form onSubmit={handleNormalLogin} style={{ width: "100%" }}>
-          <VStack spacing={4}>
-            <FormControl id="emailOrUsername">
-              <FormLabel>Email hoặc Username</FormLabel>
-              <InputGroup>
-                <InputLeftElement pointerEvents="none">
-                  <EmailIcon color="gray.500" />
-                </InputLeftElement>
-                <Input
-                  type="text"
-                  value={emailOrUsername}
-                  onChange={(e) => setEmailOrUsername(e.target.value)}
-                  placeholder="Nhập email hoặc username"
-                />
-              </InputGroup>
-            </FormControl>
-            <FormControl id="password">
-              <FormLabel>Mật khẩu</FormLabel>
-              <InputGroup>
-                <InputLeftElement pointerEvents="none">
-                  <LockIcon color="gray.500" />
-                </InputLeftElement>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu"
-                />
-              </InputGroup>
-            </FormControl>
-            <Button
-              mt={4}
-              type="submit"
-              bg="brand.accent"
-              color="white"
-              _hover={{ bg: "brand.accentDark" }}
-              width="full"
-              size="lg"
-              isLoading={isLoading}
-            >
-              Đăng nhập
-            </Button>
+        <VStack as="form" onSubmit={handleNormalLogin} spacing={4} w="full">
+          <FormControl isRequired>
+            <FormLabel htmlFor="email" srOnly>
+              Email hoặc Username
+            </FormLabel>
+            <InputGroup>
+              <InputLeftElement pointerEvents="none">
+                <EmailIcon color="gray.500" />
+              </InputLeftElement>
+              <Input
+                type="text"
+                value={emailOrUsername}
+                onChange={(e) => setEmailOrUsername(e.target.value)}
+                placeholder="Nhập email hoặc username"
+              />
+            </InputGroup>
+          </FormControl>
+          <FormControl isRequired>
+            <FormLabel htmlFor="password" srOnly>
+              Mật khẩu
+            </FormLabel>
+            <InputGroup>
+              <InputLeftElement pointerEvents="none">
+                <LockIcon color="gray.500" />
+              </InputLeftElement>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Nhập mật khẩu"
+              />
+            </InputGroup>
+          </FormControl>
+          <Button
+            mt={4}
+            type="submit"
+            bg="brand.accent"
+            color="white"
+            _hover={{ bg: "brand.accentDark" }}
+            width="full"
+            size="lg"
+            isLoading={isLoading}
+          >
+            Đăng nhập
+          </Button>
 
-            <Text color="text.secondary" fontSize="sm" textAlign="center">
-              <ChakraLink
-                as={RouterLink}
-                to="/forgot-password"
-                color="brand.accent"
-                fontWeight="medium"
-                _hover={{ textDecoration: "underline" }}
-              >
-                Quên mật khẩu?
-              </ChakraLink>
-            </Text>
-          </VStack>
-        </form>
+          <Text color="text.secondary" fontSize="sm" textAlign="center">
+            <ChakraLink
+              as={RouterLink}
+              to="/forgot-password"
+              color="brand.accent"
+              fontWeight="medium"
+              _hover={{ textDecoration: "underline" }}
+            >
+              Quên mật khẩu?
+            </ChakraLink>
+          </Text>
+        </VStack>
 
         <Text color="text.secondary" fontSize="sm">
           Chưa có tài khoản?{" "}

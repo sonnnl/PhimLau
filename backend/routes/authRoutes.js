@@ -43,25 +43,31 @@ router.get(
       }
 
       if (!user) {
-        // Xử lý các trường hợp tài khoản bị khóa
         const accountStatus = info?.accountStatus;
-        let errorParam = "google_auth_failed";
+        let redirectUrl = new URL(
+          `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`
+        );
 
-        if (accountStatus === "suspended") {
-          errorParam = "account_suspended";
-        } else if (accountStatus === "banned") {
-          errorParam = "account_banned";
-        } else if (accountStatus === "inactive") {
-          errorParam = "account_inactive";
+        let errorParam = "google_auth_failed";
+        if (accountStatus === "suspended") errorParam = "account_suspended";
+        else if (accountStatus === "banned") errorParam = "account_banned";
+        else if (accountStatus === "inactive") errorParam = "account_inactive";
+
+        redirectUrl.searchParams.set("error", errorParam);
+        redirectUrl.searchParams.set(
+          "message",
+          info?.message || "Đăng nhập Google thất bại"
+        );
+
+        // Thêm chi tiết lỗi nếu có
+        if (info?.reason) {
+          redirectUrl.searchParams.set("reason", info.reason);
+        }
+        if (info?.expires) {
+          redirectUrl.searchParams.set("expires", info.expires);
         }
 
-        return res.redirect(
-          `${
-            process.env.FRONTEND_URL || "http://localhost:3000"
-          }/login?error=${errorParam}&message=${encodeURIComponent(
-            info?.message || "Đăng nhập Google thất bại"
-          )}`
-        );
+        return res.redirect(redirectUrl.toString());
       }
 
       req.user = user;

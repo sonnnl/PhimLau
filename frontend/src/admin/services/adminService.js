@@ -283,6 +283,19 @@ export const getLogActions = async () => {
   }
 };
 
+export const toggleAutoApproval = async (userId) => {
+  try {
+    const { data } = await adminApiClient.patch(
+      `/users/${userId}/toggle-auto-approval`
+    );
+    return data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Lỗi khi cập nhật trạng thái"
+    );
+  }
+};
+
 // Export default object với tất cả services
 export default {
   // Dashboard
@@ -316,4 +329,7 @@ export default {
   getAdminLogs,
   getLogAdmins,
   getLogActions,
+
+  // New function
+  toggleAutoApproval,
 };

@@ -49,6 +49,15 @@ const userSchema = new mongoose.Schema(
       enum: ["active", "suspended", "banned", "inactive"],
       default: "active",
     },
+    suspensionExpires: {
+      type: Date,
+    },
+    suspensionReason: {
+      type: String,
+    },
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
+    verificationToken: String,
     // Google OAuth specific fields
     googleId: {
       type: String,
@@ -140,12 +149,6 @@ const userSchema = new mongoose.Schema(
       ref: "User",
     },
     suspendedAt: {
-      type: Date,
-    },
-    suspensionReason: {
-      type: String,
-    },
-    suspensionExpires: {
       type: Date,
     },
     bannedBy: {

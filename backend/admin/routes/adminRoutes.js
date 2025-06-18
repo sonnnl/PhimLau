@@ -6,6 +6,7 @@ import {
   updateUserStatus,
   deleteUser,
   createFirstAdmin,
+  toggleAutoApproval,
 } from "../controllers/adminController.js";
 // Notification management moved to adminNotificationRoutes.js
 import {
@@ -49,6 +50,7 @@ router.get("/stats", getDashboardStats);
 router.get("/users", getAllUsers);
 router.patch("/users/:id/role", updateUserRole);
 router.patch("/users/:id/status", updateUserStatus);
+router.patch("/users/:id/toggle-auto-approval", toggleAutoApproval);
 router.delete("/users/:id", deleteUser);
 
 // Notification Management - Moved to adminNotificationRoutes.js

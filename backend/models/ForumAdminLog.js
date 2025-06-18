@@ -45,6 +45,9 @@ const ForumAdminLogSchema = new mongoose.Schema(
         "user_unbanned",
         "user_updated",
         "user_deleted",
+        "user_activated",
+        "user_deactivated",
+        "user_status_changed",
 
         // Review actions
         "review_deleted",

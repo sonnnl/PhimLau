@@ -50,12 +50,31 @@ passport.use(
         let user = await User.findOne({ googleId: profile.id });
 
         if (user) {
+          // Tự động mở khóa nếu hết hạn
+          if (
+            user.status === "suspended" &&
+            user.suspensionExpires &&
+            new Date() > user.suspensionExpires
+          ) {
+            console.log(
+              `Google login: User ${user.username} suspension expired. Reactivating.`
+            );
+            user.status = "active";
+            user.suspensionExpires = null;
+            user.suspensionReason = null;
+            await user.save();
+          }
+
           // Kiểm tra trạng thái tài khoản trước khi cho phép đăng nhập
           if (user.status === "suspended") {
+            const formattedDate = new Date(
+              user.suspensionExpires
+            ).toLocaleString("vi-VN");
             return done(null, false, {
-              message:
-                "Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ admin.",
+              message: `Tài khoản của bạn đã bị tạm khóa cho đến ${formattedDate}.`,
               accountStatus: "suspended",
+              reason: user.suspensionReason,
+              expires: user.suspensionExpires.toISOString(), // Gửi dưới dạng ISO string
             });
           }
 

@@ -168,58 +168,57 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Kiểm tra trạng thái tài khoản với auto-unsuspend
-    if (user.status === "suspended") {
-      // Kiểm tra xem suspension có hết hạn chưa
-      if (user.suspensionExpires && new Date() > user.suspensionExpires) {
-        // Tự động mở khóa
-        user.status = "active";
-        user.suspendedBy = undefined;
-        user.suspendedAt = undefined;
-        user.suspensionReason = undefined;
-        user.suspensionExpires = undefined;
-        await user.save();
-        console.log(`Auto-unsuspended user: ${user.email}`);
-      } else {
-        const daysLeft = user.suspensionExpires
-          ? Math.ceil(
-              (user.suspensionExpires - new Date()) / (1000 * 60 * 60 * 24)
-            )
-          : "không xác định";
-
-        return res.status(403).json({
-          message: "Tài khoản của bạn đang bị tạm khóa.",
-          accountStatus: "suspended",
-          suspensionReason: user.suspensionReason,
-          suspensionExpires: user.suspensionExpires,
-          daysLeft: daysLeft,
-          suspendedAt: user.suspendedAt,
-        });
-      }
-    }
-
+    // Kiểm tra trạng thái tài khoản
     if (user.status === "banned") {
       return res.status(403).json({
-        message: "Tài khoản của bạn đã bị cấm vĩnh viễn.",
+        message:
+          "Tài khoản của bạn đã bị cấm vĩnh viễn. Vui lòng liên hệ quản trị viên.",
         accountStatus: "banned",
-        banReason: user.banReason,
-        bannedAt: user.bannedAt,
+        reason: user.banReason,
       });
     }
 
     if (user.status === "inactive") {
       return res.status(403).json({
-        message: "Tài khoản của bạn đã bị vô hiệu hóa.",
+        message:
+          "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên để kích hoạt lại.",
         accountStatus: "inactive",
       });
     }
 
-    // Kiểm tra email verification (chỉ với tài khoản thông thường, không áp dụng cho admin)
-    if (
-      !user.isGoogleAccount &&
-      !user.isEmailVerified &&
-      user.role !== "admin"
-    ) {
+    // Tự động mở khóa nếu hết hạn
+    if (user.status === "suspended") {
+      if (user.suspensionExpires && new Date() > user.suspensionExpires) {
+        console.log(`User ${user.username} suspension expired. Reactivating.`);
+        user.status = "active";
+        user.suspensionExpires = null;
+        user.suspensionReason = null;
+        await user.save();
+      } else {
+        // Tài khoản vẫn đang trong thời gian bị khóa
+        const formattedDate = new Date(user.suspensionExpires).toLocaleString(
+          "vi-VN",
+          {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }
+        );
+        return res.status(403).json({
+          message: `Tài khoản của bạn đã bị tạm khóa cho đến ${formattedDate}.`,
+          accountStatus: "suspended",
+          reason:
+            user.suspensionReason ||
+            "Không có lý do cụ thể. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.",
+          expires: user.suspensionExpires,
+        });
+      }
+    }
+
+    // Kiểm tra email đã được xác nhận chưa (không áp dụng cho tài khoản Google)
+    if (!user.isEmailVerified && !user.isGoogleAccount) {
       return res.status(401).json({
         message:
           "Tài khoản chưa được xác nhận. Vui lòng kiểm tra email để xác nhận tài khoản.",

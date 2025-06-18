@@ -63,6 +63,7 @@ import {
   TagLabel,
   TagCloseButton,
   IconButton,
+  Switch,
 } from "@chakra-ui/react";
 import {
   FiSearch,
@@ -86,6 +87,7 @@ import {
   deleteUser,
   updateUserRole,
   updateUserStatus,
+  toggleAutoApproval,
 } from "../services/adminService";
 
 const AdminUsers = () => {
@@ -229,6 +231,30 @@ const AdminUsers = () => {
     }
   };
 
+  const handleToggleAutoApproval = async (userId, currentValue) => {
+    try {
+      await toggleAutoApproval(userId);
+      toast({
+        title: "✅ Thành công",
+        description: `Đã ${
+          !currentValue ? "bật" : "tắt"
+        } chế độ tự động duyệt bài.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      fetchUsers(); // Refresh the list to show the change
+    } catch (error) {
+      toast({
+        title: "❌ Lỗi",
+        description: error.message,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
   const handleDeleteUser = async () => {
     try {
       await deleteUser(selectedUser._id);
@@ -276,7 +302,7 @@ const AdminUsers = () => {
         selectedUser._id,
         actionData.action,
         actionData.reason,
-        actionData.suspensionDays
+        parseInt(actionData.suspensionDays) || 7
       );
       onActionClose();
       setActionData({ action: "", reason: "", suspensionDays: 7 });
@@ -514,7 +540,7 @@ const AdminUsers = () => {
                 Tổng cộng {pagination.total || 0} người dùng
               </Text>
             </VStack>
-            <Button
+            {/* <Button
               as={RouterLink}
               to="/admin/setup"
               colorScheme="blue"
@@ -522,7 +548,7 @@ const AdminUsers = () => {
               leftIcon={<Icon as={FiUserCheck} />}
             >
               Tạo Admin
-            </Button>
+            </Button> */}
           </Flex>
 
           {loading ? (
@@ -644,6 +670,54 @@ const AdminUsers = () => {
                             {getStatusText(user.status)}
                           </Badge>
                         </VStack>
+                      </SimpleGrid>
+
+                      <Divider />
+
+                      {/* Trust Level & Auto Approval */}
+                      <SimpleGrid columns={2} spacing={4}>
+                        <VStack align="start" spacing={1}>
+                          <Text
+                            fontSize="sm"
+                            fontWeight="medium"
+                            color="gray.600"
+                          >
+                            Độ tin cậy
+                          </Text>
+                          <Badge
+                            colorScheme={
+                              user.trustLevel === "trusted" ? "green" : "gray"
+                            }
+                          >
+                            {user.trustLevel}
+                          </Badge>
+                        </VStack>
+                        <FormControl
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="space-between"
+                        >
+                          <FormLabel
+                            htmlFor={`auto-approval-${user._id}`}
+                            mb="0"
+                            fontSize="sm"
+                            fontWeight="medium"
+                            color="gray.600"
+                          >
+                            Tự động duyệt?
+                          </FormLabel>
+                          <Switch
+                            id={`auto-approval-${user._id}`}
+                            isChecked={user.autoApprovalEnabled}
+                            onChange={() =>
+                              handleToggleAutoApproval(
+                                user._id,
+                                user.autoApprovalEnabled
+                              )
+                            }
+                            colorScheme="green"
+                          />
+                        </FormControl>
                       </SimpleGrid>
 
                       <Divider />
@@ -843,7 +917,7 @@ const AdminUsers = () => {
                       onChange={(e) =>
                         setActionData((prev) => ({
                           ...prev,
-                          suspensionDays: parseInt(e.target.value) || 7,
+                          suspensionDays: e.target.value,
                         }))
                       }
                       placeholder="Nhập số ngày (1-365)"

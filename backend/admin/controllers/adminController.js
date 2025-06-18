@@ -200,110 +200,73 @@ const updateUserStatus = asyncHandler(async (req, res) => {
     if (!["active", "suspended", "banned", "inactive"].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: "Status không hợp lệ",
+        message: "Trạng thái không hợp lệ",
       });
     }
 
-    // Prevent admin from changing their own status
-    if (userId === req.user._id.toString()) {
-      return res.status(400).json({
-        success: false,
-        message: "Không thể thay đổi trạng thái của chính mình",
-      });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
+    const userToUpdate = await User.findById(userId);
+    if (!userToUpdate) {
       return res.status(404).json({
         success: false,
         message: "Không tìm thấy user",
       });
     }
 
-    // Build update data based on status
-    let updateData = { status };
+    // Prevent admin from banning/suspending another admin
+    if (
+      userToUpdate.role === "admin" &&
+      userToUpdate._id.toString() !== req.user._id.toString()
+    ) {
+      // You might allow self-update, but not other admins
+      return res.status(403).json({
+        success: false,
+        message: "Không thể thay đổi trạng thái của Admin khác.",
+      });
+    }
+
+    const updateData = {
+      status,
+      // Reset all suspension/ban details when status changes
+      suspensionExpires: null,
+      suspensionReason: null,
+      suspendedAt: null,
+      suspendedBy: null,
+      banReason: null,
+      bannedAt: null,
+      bannedBy: null,
+    };
+    let logActionType = "user_status_changed"; // Fallback
+    let logReason = `Status changed to ${status}. Reason: ${
+      reason || "Không có lý do"
+    }`;
 
     if (status === "suspended") {
-      updateData = {
-        ...updateData,
-        suspendedBy: req.user._id,
-        suspendedAt: new Date(),
-        suspensionReason: reason || "Tạm khóa bởi admin",
-        suspensionExpires: new Date(
-          Date.now() + suspensionDays * 24 * 60 * 60 * 1000
-        ),
-      };
-
-      // Create notification
-      try {
-        const { default: Notification } = await import(
-          "../../models/NotificationModel.js"
-        );
-        await Notification.create({
-          user: userId,
-          type: "account_suspended",
-          title: "Tài khoản bị tạm khóa",
-          message: `Tài khoản của bạn đã bị tạm khóa ${suspensionDays} ngày. Lý do: ${
-            reason || "Không có lý do cụ thể"
-          }`,
-          data: {
-            moderatorId: req.user._id,
-            reason: reason,
-            suspensionDays: suspensionDays,
-            severity: "suspension",
-          },
-          priority: "urgent",
-        });
-      } catch (notifError) {
-        console.error("Error creating suspension notification:", notifError);
-      }
+      const suspensionEndDate = new Date();
+      suspensionEndDate.setDate(
+        suspensionEndDate.getDate() + parseInt(suspensionDays, 10)
+      );
+      updateData.suspensionExpires = suspensionEndDate;
+      updateData.suspensionReason = reason;
+      logActionType = "user_suspended";
+      logReason = `User suspended for ${suspensionDays} days. Reason: ${
+        reason || "Không có lý do"
+      }`;
+      updateData.suspendedAt = new Date();
+      updateData.suspendedBy = req.user._id;
     } else if (status === "banned") {
-      updateData = {
-        ...updateData,
-        bannedBy: req.user._id,
-        bannedAt: new Date(),
-        banReason: reason || "Cấm bởi admin",
-        // Clear suspension fields if any
-        suspendedBy: undefined,
-        suspendedAt: undefined,
-        suspensionReason: undefined,
-        suspensionExpires: undefined,
-      };
-
-      // Create notification
-      try {
-        const { default: Notification } = await import(
-          "../../models/NotificationModel.js"
-        );
-        await Notification.create({
-          user: userId,
-          type: "account_banned",
-          title: "Tài khoản bị cấm vĩnh viễn",
-          message: `Tài khoản của bạn đã bị cấm vĩnh viễn. Lý do: ${
-            reason || "Không có lý do cụ thể"
-          }`,
-          data: {
-            moderatorId: req.user._id,
-            reason: reason,
-            severity: "ban",
-          },
-          priority: "urgent",
-        });
-      } catch (notifError) {
-        console.error("Error creating ban notification:", notifError);
-      }
+      updateData.banReason = reason;
+      logActionType = "user_banned";
+      logReason = `User banned. Reason: ${reason || "Không có lý do"}`;
+      updateData.bannedAt = new Date();
+      updateData.bannedBy = req.user._id;
     } else if (status === "active") {
-      // Clear all moderation fields when activating
-      updateData = {
-        ...updateData,
-        suspendedBy: undefined,
-        suspendedAt: undefined,
-        suspensionReason: undefined,
-        suspensionExpires: undefined,
-        bannedBy: undefined,
-        bannedAt: undefined,
-        banReason: undefined,
-      };
+      logActionType = "user_activated";
+      logReason = `User activated. Reason: ${reason || "Manual activation"}`;
+    } else if (status === "inactive") {
+      logActionType = "user_deactivated";
+      logReason = `User deactivated. Reason: ${
+        reason || "Manual deactivation"
+      }`;
     }
 
     const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
@@ -311,27 +274,20 @@ const updateUserStatus = asyncHandler(async (req, res) => {
       runValidators: true,
     }).select("-password");
 
-    const statusMessages = {
-      active: "kích hoạt",
-      suspended: `tạm khóa ${suspensionDays} ngày`,
-      banned: "cấm vĩnh viễn",
-      inactive: "vô hiệu hóa",
-    };
-
     // Log the action
     await ForumAdminLog.logAction({
       admin: req.user._id,
-      action: "user_updated",
+      action: logActionType,
       targetType: "user",
       targetId: updatedUser._id,
-      reason: `Changed status to ${status}. Reason: ${reason || "N/A"}`,
-      metadata: { username: updatedUser.username },
+      reason: logReason,
+      metadata: { username: updatedUser.username, newStatus: status },
       ipAddress: req.ip,
     });
 
     res.json({
       success: true,
-      message: `Đã ${statusMessages[status]} tài khoản`,
+      message: `Đã cập nhật trạng thái user thành công`,
       data: updatedUser,
     });
   } catch (error) {
@@ -446,6 +402,51 @@ const createFirstAdmin = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Toggle user's auto-approval status
+// @route   PATCH /api/admin/users/:id/toggle-auto-approval
+// @access  Private/Admin
+const toggleAutoApproval = asyncHandler(async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy user",
+      });
+    }
+
+    user.autoApprovalEnabled = !user.autoApprovalEnabled;
+    await user.save();
+
+    // Log the action
+    await ForumAdminLog.logAction({
+      admin: req.user._id,
+      action: "user_updated",
+      targetType: "user",
+      targetId: user._id,
+      reason: `Toggled auto-approval to ${user.autoApprovalEnabled}`,
+      metadata: {
+        username: user.username,
+        autoApproval: user.autoApprovalEnabled,
+      },
+      ipAddress: req.ip,
+    });
+
+    res.json({
+      success: true,
+      message: `Đã cập nhật trạng thái tự động duyệt cho ${user.username}`,
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi cập nhật",
+      error: error.message,
+    });
+  }
+});
+
 export {
   getDashboardStats,
   getAllUsers,
@@ -453,4 +454,5 @@ export {
   updateUserStatus,
   deleteUser,
   createFirstAdmin,
+  toggleAutoApproval,
 };
