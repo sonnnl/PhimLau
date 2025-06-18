@@ -5,3 +5,5 @@ dist/
 build/
 .docs
 **/.env
+/backend/.env
+/frontend/.env
