@@ -2,6 +2,8 @@ import asyncHandler from "express-async-handler";
 import User from "../models/UserModel.js";
 import ForumThread from "../models/ForumThread.js";
 import ForumReply from "../models/ForumReply.js";
+import Review from "../models/ReviewModel.js";
+import Like from "../models/LikeModel.js";
 
 // @desc    Get public user profile with stats and recent activities
 // @route   GET /api/social/profile/:userId
@@ -20,7 +22,7 @@ export const getPublicProfile = asyncHandler(async (req, res) => {
 
     // Get user basic info - select only public fields
     const user = await User.findById(userId).select(
-      "displayName avatarUrl role createdAt"
+      "username displayName avatarUrl role createdAt trustLevel"
     );
 
     if (!user) {
@@ -31,20 +33,58 @@ export const getPublicProfile = asyncHandler(async (req, res) => {
     }
 
     // Get user statistics
-    const [totalThreads, totalReplies] = await Promise.all([
+    const [
+      totalThreads,
+      totalReplies,
+      totalReviews,
+      averageRating,
+      userThreads,
+      userReplies,
+    ] = await Promise.all([
       ForumThread.countDocuments({ author: userId }),
       ForumReply.countDocuments({ author: userId }),
+      Review.countDocuments({ user: userId }),
+      Review.aggregate([
+        { $match: { user: userId } },
+        { $group: { _id: null, avgRating: { $avg: "$rating" } } },
+      ]),
+      ForumThread.find({ author: userId }).select("_id"),
+      ForumReply.find({ author: userId }).select("_id"),
     ]);
 
-    // Get recent forum threads (last 10)
-    const recentThreads = await ForumThread.find({ author: userId })
-      .populate("category", "name slug")
-      .sort({ createdAt: -1 })
-      .limit(10);
+    const threadIds = userThreads.map((t) => t._id);
+    const replyIds = userReplies.map((r) => r._id);
+
+    const totalLikes = await Like.countDocuments({
+      $or: [
+        { targetType: "thread", targetId: { $in: threadIds } },
+        { targetType: "reply", targetId: { $in: replyIds } },
+      ],
+    });
+
+    // Get recent activities
+    const [recentThreads, recentReviews] = await Promise.all([
+      ForumThread.find({ author: userId })
+        .populate("category", "name slug")
+        .sort({ createdAt: -1 })
+        .limit(5),
+      Review.find({ user: userId })
+        .populate("movie", "name slug posterUrl")
+        .sort({ createdAt: -1 })
+        .limit(10), // Get more to filter out deleted movies
+    ]);
+
+    // Filter out reviews where movie is null (deleted movies)
+    const validRecentReviews = recentReviews
+      .filter((review) => review.movie)
+      .slice(0, 5);
 
     const stats = {
       totalThreads: totalThreads || 0,
       totalReplies: totalReplies || 0,
+      totalReviews: totalReviews || 0,
+      averageRating: averageRating.length > 0 ? averageRating[0].avgRating : 0,
+      totalLikes: totalLikes || 0,
     };
 
     res.json({
@@ -53,6 +93,7 @@ export const getPublicProfile = asyncHandler(async (req, res) => {
         user,
         stats,
         recentThreads,
+        recentReviews: validRecentReviews,
       },
     });
   } catch (error) {
