@@ -446,6 +446,169 @@ const DeleteConfirmationModal = ({
   </Modal>
 );
 
+const Reply = ({
+  reply,
+  onReport,
+  onDelete,
+  onReplyToReply,
+  currentUserId,
+}) => {
+  const [showReplyForm, setShowReplyForm] = useState(false); // 💥 QUAN TRỌNG: State riêng cho từng reply
+
+  const handleToggleReplyForm = () => {
+    // Nếu chưa có form, gọi hàm cha để set state reply chính
+    if (!showReplyForm) {
+      onReplyToReply(reply);
+    }
+    // Toggle state của form này
+    setShowReplyForm(!showReplyForm);
+  };
+
+  const handleReplyCreated = (newReply) => {
+    // Logic để thêm newReply vào list (nếu cần) hoặc chỉ ẩn form
+    setShowReplyForm(false);
+  };
+
+  return (
+    <Box
+      id={`reply-${reply._id}`}
+      borderBottomWidth="1px"
+      borderColor="gray.700"
+      p={4}
+      bg="background.card"
+    >
+      <Flex justify="space-between" align="flex-start" mb={2}>
+        <HStack spacing={3} fontSize="sm" color="gray.400" flex="1">
+          <Link as={RouterLink} to={`/profile/${reply.author?._id}`}>
+            <Avatar
+              size="xs"
+              name={reply.author?.displayName}
+              src={reply.author?.avatarUrl}
+            />
+          </Link>
+          <Link
+            as={RouterLink}
+            to={`/profile/${reply.author?._id}`}
+            fontWeight="bold"
+          >
+            {reply.author?.displayName || "Người dùng ẩn danh"}
+          </Link>
+          <Text>• {formatDate(reply.createdAt)}</Text>
+        </HStack>
+
+        {/* 🚨 REPORT/DELETE BUTTON - Nút báo cáo & xóa reply */}
+        <Menu>
+          <MenuButton
+            as={IconButton}
+            icon={<FiMoreVertical />}
+            variant="ghost"
+            size="xs"
+          />
+          <MenuList bg="background.card" borderColor="gray.600">
+            <MenuItem
+              icon={<FiFlag />}
+              onClick={() => onReport(reply)}
+              color="red.400"
+              fontSize="sm"
+            >
+              Báo cáo trả lời
+            </MenuItem>
+            {currentUserId &&
+              (currentUserId === "admin" ||
+                currentUserId === reply.author?._id) && (
+                <MenuItem
+                  icon={<FiTrash2 />}
+                  onClick={() => onDelete("reply", reply._id)}
+                  color="red.400"
+                  fontSize="sm"
+                >
+                  Xóa trả lời
+                </MenuItem>
+              )}
+          </MenuList>
+        </Menu>
+      </Flex>
+
+      {/* Hiển thị parent reply nếu có */}
+      {reply.parentReply && (
+        <Box
+          mb={3}
+          p={2}
+          bg="gray.700"
+          borderRadius="md"
+          borderLeft="3px solid"
+          borderLeftColor="blue.400"
+        >
+          <Text fontSize="xs" color="gray.400" mb={1}>
+            Trả lời:{" "}
+            <Link
+              as={RouterLink}
+              to={`/profile/${reply.parentReply.author?._id}`}
+              fontWeight="bold"
+              color="blue.300"
+            >
+              {reply.parentReply.author?.displayName || "Ẩn danh"}
+            </Link>
+          </Text>
+          <Text fontSize="sm" color="gray.300" noOfLines={2}>
+            {reply.parentReply?.isDeleted
+              ? "Nội dung này đã bị xóa."
+              : reply.parentReply?.content || "Nội dung không có"}
+          </Text>
+        </Box>
+      )}
+
+      <Box
+        whiteSpace="pre-wrap"
+        dangerouslySetInnerHTML={{
+          __html: (reply.content || "").replace(/\n/g, "<br />"),
+        }}
+      />
+
+      <Flex justify="space-between" align="center" mt={3}>
+        <LikeButton
+          targetType="reply"
+          targetId={reply._id}
+          initialLikeCount={reply.likeCount || 0}
+          size="xs"
+        />
+
+        {/* 💬 REPLY BUTTON */}
+        <Button
+          size="xs"
+          variant="ghost"
+          colorScheme="blue"
+          leftIcon={<Icon as={FiMessageSquare} />}
+          onClick={handleToggleReplyForm}
+        >
+          Trả lời
+        </Button>
+      </Flex>
+
+      {/* ===== FORM TRẢ LỜI LỒNG NHAU (Nested Reply Form) ===== */}
+      {/* 
+        FIX: Form được render có điều kiện bởi state `showReplyForm` của chính Reply component này.
+        Chúng ta cũng truyền `setShowReplyForm` của nó xuống để form có thể tự đóng.
+      */}
+      {showReplyForm && (
+        <Box mt={4} pl={8}>
+          <ReplyForm
+            threadId={reply.thread}
+            onReplyCreated={handleReplyCreated}
+            replyingTo={{
+              replyId: reply._id,
+              authorName: reply.author.displayName,
+              content: reply.content,
+            }}
+            setReplyingTo={() => {}} // Có thể truyền hàm rỗng vì form này quản lý state riêng
+            setShowReplyForm={setShowReplyForm} // 💥 FIX: Truyền hàm setState xuống
+          />
+        </Box>
+      )}
+    </Box>
+  );
+};
+
 const ForumThreadDetailPage = () => {
   const { threadSlug } = useParams();
   const location = useLocation();
@@ -895,126 +1058,16 @@ const ForumThreadDetailPage = () => {
 
         {/* 🔧 SAFE RENDER - Render an toàn với fallback */}
         {(replies.data || []).length > 0 ? (
-          <VStack spacing={5} align="stretch">
+          <VStack spacing={6} align="stretch" mt={6}>
             {replies.data.map((reply) => (
-              <Box
+              <Reply
                 key={reply._id}
-                p={4}
-                borderWidth="1px"
-                borderRadius="md"
-                borderColor="gray.700"
-                bg="background.card"
-              >
-                <Flex justify="space-between" align="flex-start" mb={2}>
-                  <HStack spacing={3} fontSize="sm" color="gray.400" flex="1">
-                    <Link as={RouterLink} to={`/profile/${reply.author?._id}`}>
-                      <Avatar
-                        size="xs"
-                        name={reply.author?.displayName}
-                        src={reply.author?.avatarUrl}
-                      />
-                    </Link>
-                    <Link
-                      as={RouterLink}
-                      to={`/profile/${reply.author?._id}`}
-                      fontWeight="bold"
-                    >
-                      {reply.author?.displayName || "Người dùng ẩn danh"}
-                    </Link>
-                    <Text>• {formatDate(reply.createdAt)}</Text>
-                  </HStack>
-
-                  {/* 🚨 REPORT/DELETE BUTTON - Nút báo cáo & xóa reply */}
-                  <Menu>
-                    <MenuButton
-                      as={IconButton}
-                      icon={<FiMoreVertical />}
-                      variant="ghost"
-                      size="xs"
-                    />
-                    <MenuList bg="background.card" borderColor="gray.600">
-                      <MenuItem
-                        icon={<FiFlag />}
-                        onClick={() => handleReportReply(reply)}
-                        color="red.400"
-                        fontSize="sm"
-                      >
-                        Báo cáo trả lời
-                      </MenuItem>
-                      {user &&
-                        (user.role === "admin" ||
-                          user._id === reply.author?._id) && (
-                          <MenuItem
-                            icon={<FiTrash2 />}
-                            onClick={() =>
-                              handleDeleteRequest("reply", reply._id)
-                            }
-                            color="red.400"
-                            fontSize="sm"
-                          >
-                            Xóa trả lời
-                          </MenuItem>
-                        )}
-                    </MenuList>
-                  </Menu>
-                </Flex>
-
-                {/* Hiển thị parent reply nếu có */}
-                {reply.parentReply && (
-                  <Box
-                    mb={3}
-                    p={2}
-                    bg="gray.700"
-                    borderRadius="md"
-                    borderLeft="3px solid"
-                    borderLeftColor="blue.400"
-                  >
-                    <Text fontSize="xs" color="gray.400" mb={1}>
-                      Trả lời:{" "}
-                      <Link
-                        as={RouterLink}
-                        to={`/profile/${reply.parentReply.author?._id}`}
-                        fontWeight="bold"
-                        color="blue.300"
-                      >
-                        {reply.parentReply.author?.displayName || "Ẩn danh"}
-                      </Link>
-                    </Text>
-                    <Text fontSize="sm" color="gray.300" noOfLines={2}>
-                      {reply.parentReply?.isDeleted
-                        ? "Nội dung này đã bị xóa."
-                        : reply.parentReply?.content || "Nội dung không có"}
-                    </Text>
-                  </Box>
-                )}
-
-                <Box
-                  whiteSpace="pre-wrap"
-                  dangerouslySetInnerHTML={{
-                    __html: (reply.content || "").replace(/\n/g, "<br />"),
-                  }}
-                />
-
-                <Flex justify="space-between" align="center" mt={3}>
-                  <LikeButton
-                    targetType="reply"
-                    targetId={reply._id}
-                    initialLikeCount={reply.likeCount || 0}
-                    size="xs"
-                  />
-
-                  {/* 💬 REPLY BUTTON */}
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    colorScheme="blue"
-                    leftIcon={<Icon as={FiMessageSquare} />}
-                    onClick={() => handleReplyToReply(reply)}
-                  >
-                    Trả lời
-                  </Button>
-                </Flex>
-              </Box>
+                reply={reply}
+                onReport={handleReportReply}
+                onDelete={handleDeleteRequest}
+                onReplyToReply={handleReplyToReply}
+                currentUserId={user?._id}
+              />
             ))}
           </VStack>
         ) : (
@@ -1032,12 +1085,15 @@ const ForumThreadDetailPage = () => {
           />
         )}
 
-        {/* Reply Form */}
+        <Divider my={8} />
+
+        {/* Form trả lời chính cho cả thread */}
         <ReplyForm
           threadId={thread._id}
           onReplyCreated={handleReplyCreated}
           replyingTo={replyingTo}
           setReplyingTo={setReplyingTo}
+          setShowReplyForm={() => setReplyingTo(null)} // Form chính ẩn khi setReplyingTo về null
         />
       </VStack>
 

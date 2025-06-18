@@ -2,6 +2,7 @@ import asyncHandler from "express-async-handler";
 import Like from "../models/LikeModel.js";
 import ForumThread from "../models/ForumThread.js";
 import ForumReply from "../models/ForumReply.js";
+import User from "../models/UserModel.js";
 import {
   createThreadLikeNotification,
   createReplyLikeNotification,
@@ -43,8 +44,27 @@ export const toggleLike = asyncHandler(async (req, res) => {
     }
   }
 
+  // Lấy author ID từ target để cập nhật stats
+  const authorId = target.author?._id ? target.author._id.toString() : null;
+
   // Toggle like
   const result = await Like.toggleLike(userId, targetType, targetId);
+
+  // Cập nhật số lượt thích nhận được của tác giả một cách an toàn
+  if (authorId) {
+    if (result.liked) {
+      // Khi người dùng thích, tăng count
+      await User.findByIdAndUpdate(authorId, {
+        $inc: { "forumStats.likesReceived": 1 },
+      });
+    } else {
+      // Khi người dùng bỏ thích, chỉ giảm nếu count > 0
+      await User.updateOne(
+        { _id: authorId, "forumStats.likesReceived": { $gt: 0 } },
+        { $inc: { "forumStats.likesReceived": -1 } }
+      );
+    }
+  }
 
   // Update like count in target model
   const likeCount = await Like.countLikes(targetType, targetId);
