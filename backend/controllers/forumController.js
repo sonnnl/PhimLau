@@ -397,9 +397,10 @@ const createThread = asyncHandler(async (req, res) => {
           _id: movie.movieId,
           slug: movie.movieSlug,
           name: movie.movieTitle,
-          poster_url: movie.moviePosterUrl, // Match the property name expected by the util
+          poster_url: movie.moviePosterUrl,
           type: movie.movieType,
           year: movie.movieYear,
+          category: movie.category,
         });
 
         if (newMetadata) {
@@ -1325,6 +1326,7 @@ const searchMoviesForThread = asyncHandler(async (req, res) => {
       thumbUrl: getOptimizedPosterUrl(movie.thumb_url),
       year: movie.year,
       type: movie.type,
+      category: movie.category,
       displayName: `${movie.name} ${movie.year ? `(${movie.year})` : ""}`,
       typeDisplay: getMovieTypeDisplay(movie.type),
       _fromCache: false,

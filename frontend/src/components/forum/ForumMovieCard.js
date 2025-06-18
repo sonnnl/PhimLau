@@ -202,8 +202,13 @@ const ForumMovieCard = ({ movieMetadata, showPrimaryBadge = true }) => {
 
             {/* Rating Display */}
             {movieMetadata.appRatingCount > 0 && (
-              <Flex align="center" justify="space-between" mt={2}>
-                <HStack spacing={1}>
+              <Flex
+                align="center"
+                justify="space-between"
+                mt={2}
+                flexWrap="wrap"
+              >
+                <HStack spacing={1} mb={{ base: 1, md: 0 }}>
                   <StarIcon color="yellow.400" boxSize={3} />
                   <Text fontSize="xs" color="gray.300" fontWeight="semibold">
                     {movieMetadata.appAverageRating?.toFixed(1) || "0.0"}
@@ -212,14 +217,20 @@ const ForumMovieCard = ({ movieMetadata, showPrimaryBadge = true }) => {
                     ({movieMetadata.appRatingCount})
                   </Text>
                 </HStack>
-                {movieMetadata.appTotalViews > 0 && (
-                  <HStack spacing={1}>
-                    <Icon as={FiEye} boxSize={3} color="gray.500" />
-                    <Text fontSize="xs" color="gray.500">
-                      {movieMetadata.appTotalViews}
-                    </Text>
-                  </HStack>
-                )}
+                <HStack spacing={2} fontSize="xs" color="gray.500">
+                  {movieMetadata.appTotalViews > 0 && (
+                    <HStack spacing={1}>
+                      <Icon as={FiEye} boxSize={3} />
+                      <Text>{movieMetadata.appTotalViews}</Text>
+                    </HStack>
+                  )}
+                  {movieMetadata.appTotalFavorites > 0 && (
+                    <HStack spacing={1}>
+                      <Icon as={FiHeart} boxSize={3} />
+                      <Text>{movieMetadata.appTotalFavorites}</Text>
+                    </HStack>
+                  )}
+                </HStack>
               </Flex>
             )}
           </Box>
