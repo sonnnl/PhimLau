@@ -310,9 +310,11 @@ export const searchMoviesForThread = async (keyword) => {
     }
 
     const response = await axios.get(
-      `${process.env.REACT_APP_API_URL}/api/movies/search/thread`,
+      `${process.env.REACT_APP_API_URL}/forum/search/movies`,
       {
-        params: { keyword: keyword.trim() },
+        params: {
+          q: keyword,
+        },
       }
     );
 

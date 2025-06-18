@@ -41,17 +41,18 @@ const movieMetadataSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
-    // Các trường thông tin có thể cache lại từ API phim khi cần
-    // description: String,
-    // director: [String],
-    // actors: [String],
-    // category: [{ name: String, slug: String }], // Thể loại
+    category: [
+      {
+        name: String,
+        slug: String,
+      },
+    ], // Thể loại
     // country: [{ name: String, slug: String }], // Quốc gia
     // duration: String, // Thời lượng
     // quality: String, // Chất lượng
     // lang: String, // Ngôn ngữ
 
-    // Các trường thống kê của riêng ứng dụng bạn
+    // Các trường thống kê của riêng ứng dụng
     // Sẽ được cập nhật thông qua logic ứng dụng (ví dụ: khi người dùng yêu thích, bình luận)
     appTotalFavorites: {
       type: Number,
@@ -59,7 +60,6 @@ const movieMetadataSchema = new mongoose.Schema(
       min: 0,
     },
     appTotalViews: {
-      // Nếu bạn muốn đếm lượt xem trên hệ thống của mình (có thể phức tạp hơn)
       type: Number,
       default: 0,
       min: 0,
@@ -85,9 +85,6 @@ const movieMetadataSchema = new mongoose.Schema(
   },
   {
     timestamps: true, // Tự động thêm createdAt và updatedAt
-    // Không tự động tạo _id dạng ObjectId vì chúng ta dùng movieId từ API ngoài
-    // _id: false, // Nếu bạn muốn hoàn toàn bỏ _id mặc định và chỉ dùng trường bạn định nghĩa
-    // Tuy nhiên, để Mongoose hoạt động tốt với các tham chiếu, vẫn nên có trường _id (dù là String)
   }
 );
 

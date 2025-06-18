@@ -1,54 +1,12 @@
 import axios from "axios";
 import asyncHandler from "express-async-handler";
-import MovieMetadata from "../models/MovieMetadataModel.js"; // Import MovieMetadataModel
+import MovieMetadata from "../models/MovieMetadataModel.js";
+import {
+  getOrCreateMovieMetadata,
+  enrichMoviesWithDetails,
+} from "../utils/movieUtils.js";
 
 const PHIM_API_DOMAIN = "https://phimapi.com";
-
-// Helper function to get or create movie metadata in our DB
-const getOrCreateMovieMetadata = async (movieDataFromApi) => {
-  if (!movieDataFromApi || !movieDataFromApi._id) {
-    console.error(
-      "Invalid movieDataFromApi provided to getOrCreateMovieMetadata"
-    );
-    return null;
-  }
-
-  try {
-    let movieMetadata = await MovieMetadata.findById(movieDataFromApi._id);
-
-    if (movieMetadata) {
-      // Movie exists, update lastAccessedByApp or other relevant fields if needed
-      movieMetadata.lastAccessedByApp = Date.now();
-      // You might want to update other fields if they can change in the source API
-      // Ví dụ: movieMetadata.name = movieDataFromApi.name;
-      await movieMetadata.save();
-    } else {
-      // Movie does not exist, create it
-      movieMetadata = new MovieMetadata({
-        _id: movieDataFromApi._id, // Quan trọng: dùng _id từ API phim làm _id của chúng ta
-        slug: movieDataFromApi.slug,
-        name: movieDataFromApi.name,
-        originName: movieDataFromApi.origin_name || movieDataFromApi.name, // Fallback
-        posterUrl: movieDataFromApi.poster_url,
-        thumbUrl: movieDataFromApi.thumb_url,
-        year: movieDataFromApi.year,
-        type: movieDataFromApi.type,
-        // Các trường khác bạn muốn cache từ API phim có thể thêm ở đây
-        // appAverageRating, appRatingCount sẽ có default là 0
-        lastAccessedByApp: Date.now(),
-      });
-      await movieMetadata.save();
-    }
-    return movieMetadata;
-  } catch (error) {
-    console.error(
-      `Error in getOrCreateMovieMetadata for movieId ${movieDataFromApi._id}:`,
-      error
-    );
-    // Không nên để lỗi này dừng toàn bộ request, có thể trả về null và xử lý ở nơi gọi
-    return null;
-  }
-};
 
 /**
  * Lấy danh sách phim mới cập nhật với phân trang
@@ -65,43 +23,7 @@ const getLatestMovies = asyncHandler(async (req, res) => {
     );
 
     if (response.data && response.data.status && response.data.items) {
-      // API danh sách chỉ trả về thông tin cơ bản.
-      // Để có đầy đủ thông tin cho MovieCard, ta cần lấy chi tiết từng phim.
-      const detailedMovies = await Promise.all(
-        response.data.items.map(async (basicMovie) => {
-          try {
-            const detailResponse = await axios.get(
-              `${PHIM_API_DOMAIN}/phim/${basicMovie.slug}`
-            );
-            if (detailResponse.data && detailResponse.data.movie) {
-              const movieMetadata = await getOrCreateMovieMetadata(
-                detailResponse.data.movie
-              );
-              return {
-                ...detailResponse.data.movie, // Dữ liệu đầy đủ từ API chi tiết
-                movieMetadata: movieMetadata,
-              };
-            }
-          } catch (e) {
-            console.error(
-              `Failed to fetch details for ${basicMovie.slug}:`,
-              e.message
-            );
-          }
-          // Trả về thông tin cơ bản nếu không lấy được chi tiết
-          const movieMetadata = await MovieMetadata.findById(basicMovie._id);
-          return {
-            ...basicMovie,
-            movieMetadata: movieMetadata || {
-              appAverageRating: 0,
-              appRatingCount: 0,
-            },
-          };
-        })
-      );
-
-      // Lọc bỏ những phim không lấy được chi tiết (null)
-      const validMovies = detailedMovies.filter(Boolean);
+      const validMovies = await enrichMoviesWithDetails(response.data.items);
 
       const paginationData =
         response.data.params?.pagination || response.data.pagination || null;
@@ -295,48 +217,25 @@ const searchMovies = asyncHandler(async (req, res) => {
 // @access  Public
 const getSingleMovies = asyncHandler(async (req, res) => {
   const page = req.query.page || 1;
+  const limit = req.query.limit || 18;
   try {
     const { data: apiResponse } = await axios.get(
-      `${PHIM_API_DOMAIN}/v1/api/danh-sach/phim-le?page=${page}`
+      `${PHIM_API_DOMAIN}/v1/api/danh-sach/phim-le?page=${page}&limit=${limit}`
     );
-    // API trả về: { status, msg, data: { items, params: { pagination } } }
     if (
       apiResponse &&
       apiResponse.status === "success" &&
-      apiResponse.data &&
-      apiResponse.data.items
+      apiResponse.data?.items
     ) {
-      // Enrich single movies with local movie metadata (ratings)
-      const moviesWithMetadata = await Promise.all(
-        apiResponse.data.items.map(async (movie) => {
-          try {
-            // Try to get metadata from local database
-            const movieMetadata = await MovieMetadata.findById(movie._id);
-            return {
-              ...movie,
-              movieMetadata: movieMetadata || {
-                appAverageRating: 0,
-                appRatingCount: 0,
-              },
-            };
-          } catch (err) {
-            // If error, return movie without metadata
-            return {
-              ...movie,
-              movieMetadata: {
-                appAverageRating: 0,
-                appRatingCount: 0,
-              },
-            };
-          }
-        })
+      const moviesWithMetadata = await enrichMoviesWithDetails(
+        apiResponse.data.items
       );
 
       res.json({
         success: true,
         items: moviesWithMetadata,
-        pagination: apiResponse.data.params?.pagination, // Lấy pagination từ data.params
-        titlePage: apiResponse.data.titlePage, // Có thể thêm titlePage nếu frontend cần
+        pagination: apiResponse.data.params?.pagination,
+        titlePage: apiResponse.data.titlePage,
       });
     } else {
       res.status(404).json({
@@ -363,40 +262,18 @@ const getSingleMovies = asyncHandler(async (req, res) => {
 // @access  Public
 const getSeriesMovies = asyncHandler(async (req, res) => {
   const page = req.query.page || 1;
+  const limit = req.query.limit || 18;
   try {
     const { data: apiResponse } = await axios.get(
-      `${PHIM_API_DOMAIN}/v1/api/danh-sach/phim-bo?page=${page}`
+      `${PHIM_API_DOMAIN}/v1/api/danh-sach/phim-bo?page=${page}&limit=${limit}`
     );
     if (
       apiResponse &&
       apiResponse.status === "success" &&
-      apiResponse.data &&
-      apiResponse.data.items
+      apiResponse.data?.items
     ) {
-      // Enrich series movies with local movie metadata (ratings)
-      const moviesWithMetadata = await Promise.all(
-        apiResponse.data.items.map(async (movie) => {
-          try {
-            // Try to get metadata from local database
-            const movieMetadata = await MovieMetadata.findById(movie._id);
-            return {
-              ...movie,
-              movieMetadata: movieMetadata || {
-                appAverageRating: 0,
-                appRatingCount: 0,
-              },
-            };
-          } catch (err) {
-            // If error, return movie without metadata
-            return {
-              ...movie,
-              movieMetadata: {
-                appAverageRating: 0,
-                appRatingCount: 0,
-              },
-            };
-          }
-        })
+      const moviesWithMetadata = await enrichMoviesWithDetails(
+        apiResponse.data.items
       );
 
       res.json({

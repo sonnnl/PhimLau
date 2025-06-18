@@ -8,6 +8,11 @@ import Notification from "../models/NotificationModel.js"; // ✅ Import Notific
 import MovieMetadata from "../models/MovieMetadataModel.js"; // ✅ Import MovieMetadata model
 import axios from "axios"; // ✅ Import axios for API calls
 import { analyzeContent } from "../utils/autoModerationUtils.js";
+import {
+  getOrCreateMovieMetadata,
+  getMovieTypeDisplay,
+  getOptimizedPosterUrl,
+} from "../utils/movieUtils.js";
 
 // @desc    Get all forum categories
 // @route   GET /api/forum/categories
@@ -387,24 +392,17 @@ const createThread = asyncHandler(async (req, res) => {
       for (const movie of movieMetadata) {
         if (!movie.movieId) continue;
 
-        // 🔍 VALIDATE MOVIE EXISTS - Kiểm tra phim có tồn tại không
-        const movieExists = await MovieMetadata.findById(movie.movieId).lean();
+        // Use the centralized utility function
+        const newMetadata = await getOrCreateMovieMetadata({
+          _id: movie.movieId,
+          slug: movie.movieSlug,
+          name: movie.movieTitle,
+          poster_url: movie.moviePosterUrl, // Match the property name expected by the util
+          type: movie.movieType,
+          year: movie.movieYear,
+        });
 
-        if (!movieExists) {
-          console.warn(
-            `⚠️ Movie ${movie.movieId} not found, creating metadata...`
-          );
-
-          // Create metadata if not exists (using ensureMovieMetadata)
-          const newMetadata = await ensureMovieMetadata({
-            _id: movie.movieId,
-            slug: movie.movieSlug,
-            name: movie.movieTitle,
-            posterUrl: movie.moviePosterUrl,
-            type: movie.movieType,
-            year: movie.movieYear,
-          });
-
+        if (newMetadata) {
           processedMovieMetadata.push({
             movieId: newMetadata._id,
             movieSlug: newMetadata.slug,
@@ -413,27 +411,10 @@ const createThread = asyncHandler(async (req, res) => {
             movieType: newMetadata.type,
             movieYear: newMetadata.year,
             isPrimary: movie.isPrimary || false,
-            // ⭐ Add rating information
             appAverageRating: newMetadata.appAverageRating || 0,
             appRatingCount: newMetadata.appRatingCount || 0,
             appTotalViews: newMetadata.appTotalViews || 0,
             appTotalFavorites: newMetadata.appTotalFavorites || 0,
-          });
-        } else {
-          // Movie exists, use existing data
-          processedMovieMetadata.push({
-            movieId: movieExists._id,
-            movieSlug: movieExists.slug,
-            movieTitle: movieExists.name?.substring(0, 200) || "Unknown Movie",
-            moviePosterUrl: movieExists.posterUrl,
-            movieType: movieExists.type,
-            movieYear: movieExists.year,
-            isPrimary: movie.isPrimary || false,
-            // ⭐ Add rating information
-            appAverageRating: movieExists.appAverageRating || 0,
-            appRatingCount: movieExists.appRatingCount || 0,
-            appTotalViews: movieExists.appTotalViews || 0,
-            appTotalFavorites: movieExists.appTotalFavorites || 0,
           });
         }
       }
@@ -1407,73 +1388,6 @@ const searchMoviesForThread = asyncHandler(async (req, res) => {
     throw new Error("Lỗi khi tìm kiếm phim. Vui lòng thử lại sau.");
   }
 });
-
-// 🎬 HELPER: Get movie type display name
-const getMovieTypeDisplay = (type) => {
-  const typeMap = {
-    single: "Phim lẻ",
-    series: "Phim bộ",
-    hoathinh: "Hoạt hình",
-    tvshows: "TV Shows",
-  };
-  return typeMap[type] || type || "N/A";
-};
-
-// 🖼️ HELPER: Get optimized poster URL with fallback
-const getOptimizedPosterUrl = (posterPath) => {
-  if (!posterPath) {
-    return "https://via.placeholder.com/300x450/e2e8f0/718096?text=No+Image";
-  }
-
-  // Nếu đã là URL đầy đủ thì return luôn
-  if (posterPath.startsWith("http")) {
-    return posterPath;
-  }
-
-  // Nếu là relative path thì thêm CDN domain
-  return `https://img.phimapi.com/${posterPath}`;
-};
-
-// 🎬 HELPER: Ensure movie metadata exists (called when user selects movie)
-const ensureMovieMetadata = async (movieData) => {
-  try {
-    let movieMetadata = await MovieMetadata.findById(movieData._id);
-
-    if (!movieMetadata) {
-      // 🆕 CREATE NEW METADATA only when user actually selects the movie
-      console.log(`🆕 Creating metadata for selected movie: ${movieData.name}`);
-      movieMetadata = new MovieMetadata({
-        _id: movieData._id,
-        slug: movieData.slug,
-        name: movieData.name,
-        originName: movieData.originName || movieData.name,
-        posterUrl: getOptimizedPosterUrl(movieData.posterUrl),
-        thumbUrl: getOptimizedPosterUrl(movieData.thumbUrl),
-        year: movieData.year,
-        type: movieData.type,
-        lastAccessedByApp: new Date(),
-      });
-
-      await movieMetadata.save();
-      console.log(`✅ Created metadata for selected movie: ${movieData.name}`);
-    } else {
-      // 📈 UPDATE ACCESS TIME for existing metadata
-      movieMetadata.lastAccessedByApp = new Date();
-      await movieMetadata.save();
-      console.log(
-        `📈 Updated access time for selected movie: ${movieData.name}`
-      );
-    }
-
-    return movieMetadata;
-  } catch (error) {
-    console.error(
-      `❌ Error ensuring movie metadata for ${movieData._id}:`,
-      error
-    );
-    throw new Error("Không thể xử lý thông tin phim");
-  }
-};
 
 // ===== 🛡️ HELPER: Validate moderation data consistency =====
 const validateModerationConsistency = (

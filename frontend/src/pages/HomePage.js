@@ -7,16 +7,16 @@ import {
   Center,
   SimpleGrid,
   Button,
-  Icon,
   Box,
   VStack,
   Flex,
 } from "@chakra-ui/react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowForwardIcon } from "@chakra-ui/icons";
 import movieService from "../services/movieService";
 import MovieCard from "../components/MovieCard";
 import MovieSlider from "../components/MovieSlider";
+import RecommendedMovies from "../components/home/RecommendedMovies";
 
 const MAX_SLIDER_MOVIES = 12;
 const MAX_GRID_MOVIES = 6;
@@ -194,6 +194,8 @@ const HomePage = () => {
               </Center>
             ))}
         </Box>
+
+        <RecommendedMovies />
 
         <Box>
           <SectionHeader
