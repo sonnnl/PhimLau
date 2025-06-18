@@ -7,6 +7,7 @@ import {
   deleteUser,
   createFirstAdmin,
   toggleAutoApproval,
+  updateUserTrustLevel,
 } from "../controllers/adminController.js";
 // Notification management moved to adminNotificationRoutes.js
 import {
@@ -47,11 +48,12 @@ router.use(admin); // All routes below require admin role
 router.get("/stats", getDashboardStats);
 
 // User Management - KHÔNG CACHE vì admin cần real-time data
-router.get("/users", getAllUsers);
-router.patch("/users/:id/role", updateUserRole);
-router.patch("/users/:id/status", updateUserStatus);
-router.patch("/users/:id/toggle-auto-approval", toggleAutoApproval);
-router.delete("/users/:id", deleteUser);
+router.route("/users").get(getAllUsers);
+router.route("/users/:id/role").patch(updateUserRole);
+router.route("/users/:id/status").patch(updateUserStatus);
+router.route("/users/:id/trust-level").patch(updateUserTrustLevel);
+router.route("/users/:id/toggle-auto-approval").patch(toggleAutoApproval);
+router.route("/users/:id").delete(deleteUser);
 
 // Notification Management - Moved to adminNotificationRoutes.js
 // router.post("/notifications/send", sendNotification);

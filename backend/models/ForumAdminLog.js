@@ -48,6 +48,7 @@ const ForumAdminLogSchema = new mongoose.Schema(
         "user_activated",
         "user_deactivated",
         "user_status_changed",
+        "user_trust_level_changed",
 
         // Review actions
         "review_deleted",
@@ -62,6 +63,9 @@ const ForumAdminLogSchema = new mongoose.Schema(
         "bulk_delete",
         "bulk_approve",
         "settings_updated",
+
+        // New actions
+        "notification_sent",
       ],
       required: true,
     },

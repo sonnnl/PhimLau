@@ -8,6 +8,56 @@ import {
   sendPasswordResetSuccessEmail,
 } from "../utils/emailService.js";
 
+/**
+ * @desc Checks and updates user's trust level based on their stats and age.
+ * @param {object} user - The full user object from Mongoose.
+ * @returns {object} - An object { user: updatedUser, promotion: "newLevel" | null }
+ */
+const updateUserTrustLevel = async (user) => {
+  const accountAgeInDays =
+    (new Date() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24);
+  const { postsCount, likesReceived, repliesCount } = user.forumStats || {
+    postsCount: 0,
+    likesReceived: 0,
+    repliesCount: 0,
+  };
+
+  let promotion = null;
+
+  // Logic for new -> basic
+  if (user.trustLevel === "new") {
+    const meetsPosts = postsCount >= 5;
+    const meetsLikes = likesReceived >= 10;
+    const meetsReplies = repliesCount >= 10;
+    const meetsAge = accountAgeInDays >= 10;
+
+    if (meetsPosts && meetsLikes && meetsReplies && meetsAge) {
+      user.trustLevel = "basic";
+      promotion = "basic";
+    }
+  }
+
+  // Logic for basic -> trusted
+  if (user.trustLevel === "basic") {
+    const meetsPosts = postsCount >= 15;
+    const meetsLikes = likesReceived >= 30;
+    const meetsReplies = repliesCount >= 30;
+    const meetsAge = accountAgeInDays >= 30; // 1 tháng ~ 30 ngày
+
+    if (meetsPosts && meetsLikes && meetsReplies && meetsAge) {
+      user.trustLevel = "trusted";
+      promotion = "trusted";
+    }
+  }
+
+  if (promotion) {
+    console.log(`User ${user.username} promoted to trust level: ${promotion}`);
+    await user.save();
+  }
+
+  return { user, promotion };
+};
+
 // @desc    Đăng ký tài khoản mới
 // @route   POST /auth/register
 // @access  Public
@@ -227,19 +277,25 @@ export const loginUser = async (req, res) => {
       });
     }
 
+    // ===== TRUST LEVEL UPDATE LOGIC =====
+    const { user: updatedUser, promotion } = await updateUserTrustLevel(user);
+    // ====================================
+
     // Đăng nhập thành công
     res.json({
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      role: user.role,
-      status: user.status,
-      isEmailVerified: user.isEmailVerified,
-      isGoogleAccount: user.isGoogleAccount,
-      token: generateToken(user._id),
-      createdAt: user.createdAt,
+      _id: updatedUser._id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+      displayName: updatedUser.displayName,
+      avatarUrl: updatedUser.avatarUrl,
+      role: updatedUser.role,
+      status: updatedUser.status,
+      isEmailVerified: updatedUser.isEmailVerified,
+      isGoogleAccount: updatedUser.isGoogleAccount,
+      trustLevel: updatedUser.trustLevel,
+      trustLevelPromotion: promotion,
+      token: generateToken(updatedUser._id),
+      createdAt: updatedUser.createdAt,
     });
   } catch (error) {
     console.error("Login error:", error);

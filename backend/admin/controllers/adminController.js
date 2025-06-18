@@ -447,6 +447,60 @@ const toggleAutoApproval = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Update user trust level
+// @route   PATCH /api/admin/users/:id/trust-level
+// @access  Private/Admin
+const updateUserTrustLevel = asyncHandler(async (req, res) => {
+  try {
+    const { trustLevel } = req.body;
+    const userId = req.params.id;
+
+    const allowedLevels = ["new", "basic", "trusted", "moderator"];
+    if (!allowedLevels.includes(trustLevel)) {
+      return res.status(400).json({
+        success: false,
+        message: "Cấp độ tin cậy không hợp lệ.",
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { trustLevel },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy user",
+      });
+    }
+
+    // Log the action
+    await ForumAdminLog.logAction({
+      admin: req.user._id,
+      action: "user_trust_level_changed",
+      targetType: "user",
+      targetId: user._id,
+      reason: `Changed trust level to ${trustLevel}`,
+      metadata: { username: user.username },
+      ipAddress: req.ip,
+    });
+
+    res.json({
+      success: true,
+      message: `Đã cập nhật độ tin cậy thành ${trustLevel}`,
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi cập nhật độ tin cậy",
+      error: error.message,
+    });
+  }
+});
+
 export {
   getDashboardStats,
   getAllUsers,
@@ -455,4 +509,5 @@ export {
   deleteUser,
   createFirstAdmin,
   toggleAutoApproval,
+  updateUserTrustLevel,
 };

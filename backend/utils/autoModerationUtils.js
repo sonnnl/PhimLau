@@ -19,6 +19,10 @@ const BANNED_WORDS = [
   "di", // đĩ
   "cave",
   "gai goi", // gái gọi
+  "loz", // loz
+  "suc vat",
+  "oc cho",
+  "con me may",
 
   // ⚔️ Từ ngữ kích động bạo lực (Level: HIGH) - ĐÃ NORMALIZE
   "giet", // giết
@@ -28,6 +32,7 @@ const BANNED_WORDS = [
   "pha hoai", // phá hoại
   "bom",
   "khung bo", // khủng bố
+  "cong san",
 
   // 🎭 Từ ngữ phân biệt chủng tộc (Level: HIGH) - ĐÃ NORMALIZE
   "tau khua", // tàu khựa
@@ -46,6 +51,8 @@ const BANNED_WORDS = [
   "ban thuoc", // bán thuốc
   "ban duoc", // bán dược
   "quang cao", // quảng cáo
+  "call show",
+  "check hang",
 
   // 🔞 Nội dung người lớn (Level: HIGH) - ĐÃ NORMALIZE
   "sex",
@@ -85,15 +92,22 @@ const SPAM_PATTERNS = [
  */
 
 /**
- * 🔍 FUNCTION: Kiểm tra nội dung có chứa từ ngữ nhạy cảm không
- * @param {string} content - Nội dung cần kiểm tra
- * @returns {Object} Kết quả phân tích profanity
+ * @function checkProfanity
+ * @description Kiểm tra nội dung có chứa từ ngữ nhạy cảm trong danh sách BANNED_WORDS không.
  *
- * @logic WORKFLOW:
- * 1. Normalize text (bỏ dấu, lowercase)
- * 2. Check từng banned word
- * 3. Tính severity dựa trên số lượng vi phạm
- * 4. Return analysis result
+ * @param {string} content - Chuỗi văn bản cần được kiểm tra.
+ *
+ * @returns {Object} Một đối tượng chứa kết quả phân tích, bao gồm:
+ * - `isViolation` (boolean): True nếu phát hiện vi phạm.
+ * - `violatedWords` (Array<string>): Danh sách các từ vi phạm đã tìm thấy.
+ * - `severity` (string): Mức độ nghiêm trọng ('low', 'medium', 'high', 'critical').
+ * - `riskScore` (number): Điểm rủi ro được tính dựa trên số lượng từ vi phạm (0, 50, 80, 100).
+ * - `totalViolations` (number): Tổng số từ vi phạm.
+ *
+ * @logic
+ * 1. Chuẩn hóa `content` về chữ thường và loại bỏ dấu tiếng Việt để phát hiện các biến thể.
+ * 2. Lặp qua danh sách `BANNED_WORDS` để tìm kiếm sự tồn tại của chúng trong nội dung đã chuẩn hóa.
+ * 3. Tính toán `riskScore` và `severity` dựa trên số lượng vi phạm được tìm thấy.
  */
 export const checkProfanity = (content) => {
   // 🔧 NORMALIZE - Chuẩn hóa text để tăng độ chính xác
@@ -148,15 +162,22 @@ export const checkProfanity = (content) => {
 };
 
 /**
- * 🕵️ FUNCTION: Kiểm tra nội dung có dấu hiệu spam không
- * @param {string} content - Nội dung cần kiểm tra
- * @returns {Object} Kết quả phân tích spam
+ * @function checkSpam
+ * @description Phân tích nội dung để phát hiện các dấu hiệu của spam, dựa trên các mẫu (patterns) và cấu trúc văn bản.
  *
- * @logic WORKFLOW:
- * 1. Check spam patterns với trọng số
- * 2. Analyze content structure (length, caps, repetition)
- * 3. Calculate total risk score
- * 4. Determine spam classification
+ * @param {string} content - Chuỗi văn bản cần được kiểm tra.
+ *
+ * @returns {Object} Một đối tượng chứa kết quả phân tích spam, bao gồm:
+ * - `isSpam` (boolean): True nếu điểm rủi ro vượt ngưỡng 30.
+ * - `spamLevel` (string): Mức độ spam ('low', 'medium', 'high').
+ * - `riskScore` (number): Tổng điểm rủi ro được cộng dồn từ các yếu tố vi phạm.
+ * - `analysisDetails` (Array<Object>): Mảng chứa chi tiết về từng yếu tố vi phạm được phát hiện.
+ * - `recommendation` (string): Hành động đề xuất ('approve', 'review', 'reject').
+ *
+ * @logic
+ * 1. Quét nội dung dựa trên danh sách `SPAM_PATTERNS` (URL, SĐT, email,...) và cộng dồn điểm rủi ro.
+ * 2. Phân tích cấu trúc: cộng thêm điểm nếu nội dung quá ngắn, chứa quá nhiều chữ hoa, hoặc lặp lại từ khóa.
+ * 3. Dựa trên tổng `riskScore`, phân loại `spamLevel` và đưa ra `recommendation`.
  */
 export const checkSpam = (content) => {
   const spamIndicators = [];
@@ -257,17 +278,26 @@ export const checkSpam = (content) => {
  */
 
 /**
- * 🤖 FUNCTION: Phân tích nội dung toàn diện (Content Analysis Engine)
- * @param {string} titleOrContent - Title (cho thread) hoặc content (cho reply)
- * @param {string} content - Content (optional, chỉ dùng cho thread)
- * @returns {Object} Kết quả phân tích chi tiết
+ * @function analyzeContent
+ * @description Đây là hàm tổng hợp, điều phối việc phân tích nội dung. Nó gọi `checkProfanity` và `checkSpam`, sau đó kết hợp kết quả để đưa ra một đánh giá toàn diện.
  *
- * @logic WORKFLOW:
- * 1. Prepare and normalize content
- * 2. Check profanity violations
- * 3. Analyze spam patterns
- * 4. Calculate overall risk score
- * 5. Generate recommendations
+ * @param {string} titleOrContent - Tiêu đề của bài viết (thread) hoặc nội dung của bình luận (reply).
+ * @param {string|null} content - Nội dung của bài viết (chỉ dành cho thread). Nếu là `null`, hàm sẽ hiểu đây là phân tích cho một bình luận.
+ *
+ * @returns {Object} Một đối tượng phân tích toàn diện, chứa:
+ * - `profanity`: Kết quả trả về từ hàm `checkProfanity`.
+ * - `spam`: Kết quả trả về từ hàm `checkSpam`.
+ * - `overallRisk` (string): Mức độ rủi ro tổng thể ('low', 'medium', 'high', 'critical').
+ * - `combinedScore` (number): Tổng điểm rủi ro từ cả profanity và spam.
+ * - `shouldReject` (boolean): True nếu nội dung nên bị từ chối ngay lập tức.
+ * - `shouldFlag` (boolean): True nếu nội dung cần được đưa vào hàng đợi kiểm duyệt.
+ * - `recommendations` (Object): Một đối tượng chứa hành động và lý do đề xuất.
+ *
+ * @logic
+ * 1. Gộp tiêu đề và nội dung (nếu là thread) thành một chuỗi duy nhất để phân tích.
+ * 2. Lần lượt gọi `checkProfanity` và `checkSpam`.
+ * 3. Cộng dồn `riskScore` từ hai hàm trên để có `combinedScore`.
+ * 4. Dựa trên `combinedScore` và `severity` của profanity, xác định `overallRisk` và đưa ra quyết định cuối cùng (`shouldReject`, `shouldFlag`).
  */
 export const analyzeContent = (titleOrContent, content = null) => {
   // 📝 PREPARE CONTENT - Xử lý content linh hoạt
@@ -372,17 +402,25 @@ export const analyzeContent = (titleOrContent, content = null) => {
  */
 
 /**
- * 🤖 FUNCTION: Đề xuất hành động moderation dựa trên user profile và content analysis
- * @param {Object} user - Thông tin user
- * @param {Object} contentAnalysis - Kết quả phân tích nội dung
- * @param {string} contentType - "thread" hoặc "reply" để áp dụng logic khác nhau
- * @returns {string} Hành động đề xuất: "approve", "review", "reject"
+ * @function suggestModerationAction
+ * @description Đề xuất hành động kiểm duyệt cuối cùng ('approve', 'review', 'reject') bằng cách kết hợp kết quả phân tích nội dung với thông tin của người dùng (vai trò, độ tin cậy, lịch sử).
  *
- * @logic DECISION TREE:
- * 1. Check user role (admin/moderator = auto approve)
- * 2. Check content severity (critical = auto reject)
- * 3. Apply different rules for thread vs reply
- * 4. Consider user trust level + content risk
+ * @param {Object} user - Đối tượng người dùng đầy đủ, chứa `role`, `trustLevel`, và `forumStats`.
+ * @param {Object} contentAnalysis - Kết quả trả về từ hàm `analyzeContent`.
+ * @param {string} [contentType="thread"] - Loại nội dung ('thread' hoặc 'reply') để áp dụng logic khác nhau.
+ *
+ * @returns {string} Hành động được đề xuất: "approve", "review", hoặc "reject".
+ *
+ * @logic (Decision Tree)
+ * 1. **Bỏ qua cho Admin/Moderator**: Luôn trả về "approve".
+ * 2. **Từ chối nội dung nghiêm trọng**: Nếu `shouldReject` là true, trả về "reject".
+ * 3. **Kiểm tra lịch sử người dùng**: Nếu người dùng có nhiều báo cáo vi phạm, sẽ bị xem xét kỹ hơn.
+ * 4. **Áp dụng logic riêng cho Thread**:
+ *    - `trusted` user: Chỉ cần nội dung an toàn (`low` risk).
+ *    - `new` user: Luôn phải chờ duyệt.
+ *    - `basic` user: Cần nội dung rất an toàn để được duyệt tự động.
+ * 5. **Áp dụng logic riêng cho Reply**:
+ *    - Triết lý: Chỉ từ chối các bình luận có vi phạm rõ ràng (từ cấm, rủi ro cao), còn lại sẽ được duyệt để đảm bảo trải nghiệm người dùng mượt mà. Sẽ không có trạng thái "review" cho bình luận.
  */
 export const suggestModerationAction = (
   user,
@@ -515,15 +553,17 @@ export const suggestModerationAction = (
  */
 
 /**
- * 🧹 FUNCTION: Lọc và làm sạch nội dung (Content Sanitization)
- * @param {string} content - Nội dung gốc
- * @returns {string} Nội dung đã được làm sạch
+ * @function cleanContent
+ * @description Lọc và làm sạch một chuỗi văn bản bằng cách thay thế các từ bị cấm, loại bỏ link, SĐT, email và các ký tự đặc biệt không mong muốn.
  *
- * @logic WORKFLOW:
- * 1. Replace banned words với dấu *
- * 2. Remove/mask URLs, emails, phone numbers
- * 3. Clean excessive special characters
- * 4. Return sanitized content
+ * @param {string} content - Chuỗi văn bản gốc cần làm sạch.
+ *
+ * @returns {string} Chuỗi văn bản đã được làm sạch.
+ *
+ * @logic
+ * 1. Thay thế các từ trong `BANNED_WORDS` bằng các dấu `*`.
+ * 2. Thay thế URL, SĐT, email bằng các placeholder như `[LINK_REMOVED]`.
+ * 3. Giảm bớt các ký tự đặc biệt hoặc ký tự lặp lại quá mức.
  */
 export const cleanContent = (content) => {
   let cleanedContent = content;

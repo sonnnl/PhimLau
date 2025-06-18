@@ -571,11 +571,13 @@ const createThread = asyncHandler(async (req, res) => {
   }
 
   // BƯỚC 2: Kiểm tra tự động phê duyệt (admin/moderator hoặc user tin cậy + nội dung an toàn)
-  else if (user.role === "admin" || user.role === "moderator") {
+  else if (user.role === "admin" || user.trustLevel === "moderator") {
     moderationStatus = "approved";
     autoApproved = true;
-    autoApprovalReason = user.role; // "admin" hoặc "moderator"
-    moderationNote = `Tự động phê duyệt: Quyền ${user.role}`;
+    autoApprovalReason = user.role === "admin" ? "admin" : "moderator"; // "admin" hoặc "moderator"
+    moderationNote = `Tự động phê duyệt: Quyền ${
+      user.role === "admin" ? "Admin" : "Moderator"
+    }`;
   } else if (
     (user.trustLevel === "trusted" || user.autoApprovalEnabled) &&
     contentAnalysis.overallRisk === "low" &&
@@ -738,10 +740,15 @@ const createThread = asyncHandler(async (req, res) => {
     // ===== 💬 USER MESSAGE =====
     message:
       moderationStatus === "pending"
-        ? "Bài viết đã được gửi và đang chờ kiểm duyệt"
+        ? user.trustLevel === "trusted" || user.autoApprovalEnabled
+          ? "Cảm ơn bạn đã đăng bài! Do nội dung được hệ thống phân tích là có thể có rủi ro, bài viết sẽ được quản trị viên xem qua nhanh chóng trước khi hiển thị."
+          : "Bài viết của bạn đã được gửi và đang chờ kiểm duyệt. Cảm ơn sự kiên nhẫn của bạn!"
         : moderationStatus === "approved"
         ? "Bài viết đã được đăng thành công"
-        : "Bài viết bị từ chối",
+        : `Bài viết bị từ chối: ${
+            contentAnalysis.recommendations?.reason ||
+            "Nội dung vi phạm quy tắc cộng đồng"
+          }`,
   };
 
   console.log("📤 Sending response:", {

@@ -296,6 +296,20 @@ export const toggleAutoApproval = async (userId) => {
   }
 };
 
+// Function to update a user's trust level
+export const updateUserTrustLevel = async (userId, trustLevel) => {
+  try {
+    const { data } = await adminApiClient.patch(
+      `/users/${userId}/trust-level`,
+      { trustLevel }
+    );
+    return data;
+  } catch (error) {
+    console.error("Error updating user trust level:", error.response?.data);
+    throw error;
+  }
+};
+
 // Export default object với tất cả services
 export default {
   // Dashboard
@@ -332,4 +346,7 @@ export default {
 
   // New function
   toggleAutoApproval,
+
+  // New function
+  updateUserTrustLevel,
 };

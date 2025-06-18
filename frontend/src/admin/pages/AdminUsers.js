@@ -88,6 +88,7 @@ import {
   updateUserRole,
   updateUserStatus,
   toggleAutoApproval,
+  updateUserTrustLevel,
 } from "../services/adminService";
 
 const AdminUsers = () => {
@@ -215,6 +216,28 @@ const AdminUsers = () => {
       toast({
         title: "✅ Thành công",
         description: `Đã ${statusMessages[newStatus]} tài khoản`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      fetchUsers();
+    } catch (error) {
+      toast({
+        title: "❌ Lỗi",
+        description: error.message,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleTrustLevelUpdate = async (userId, newTrustLevel) => {
+    try {
+      await updateUserTrustLevel(userId, newTrustLevel);
+      toast({
+        title: "✅ Thành công",
+        description: `Đã cập nhật độ tin cậy thành ${newTrustLevel}`,
         status: "success",
         duration: 3000,
         isClosable: true,
@@ -684,13 +707,20 @@ const AdminUsers = () => {
                           >
                             Độ tin cậy
                           </Text>
-                          <Badge
-                            colorScheme={
-                              user.trustLevel === "trusted" ? "green" : "gray"
+                          <Select
+                            size="sm"
+                            value={user.trustLevel}
+                            onChange={(e) =>
+                              handleTrustLevelUpdate(user._id, e.target.value)
                             }
+                            maxW="120px"
+                            fontSize="xs"
                           >
-                            {user.trustLevel}
-                          </Badge>
+                            <option value="new">New</option>
+                            <option value="basic">Basic</option>
+                            <option value="trusted">Trusted</option>
+                            <option value="moderator">Moderator</option>
+                          </Select>
                         </VStack>
                         <FormControl
                           display="flex"
