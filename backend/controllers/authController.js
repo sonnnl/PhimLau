@@ -21,9 +21,7 @@ const updateUserTrustLevel = async (user) => {
     likesReceived: 0,
     repliesCount: 0,
   };
-
   let promotion = null;
-
   // Logic for new -> basic
   if (user.trustLevel === "new") {
     const meetsPosts = postsCount >= 5;
@@ -36,14 +34,12 @@ const updateUserTrustLevel = async (user) => {
       promotion = "basic";
     }
   }
-
   // Logic for basic -> trusted
   if (user.trustLevel === "basic") {
     const meetsPosts = postsCount >= 15;
     const meetsLikes = likesReceived >= 30;
     const meetsReplies = repliesCount >= 30;
     const meetsAge = accountAgeInDays >= 30; // 1 tháng ~ 30 ngày
-
     if (meetsPosts && meetsLikes && meetsReplies && meetsAge) {
       user.trustLevel = "trusted";
       promotion = "trusted";

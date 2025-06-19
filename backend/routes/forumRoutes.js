@@ -14,7 +14,7 @@ import {
   deleteThread, // ✅ Import deleteThread
   deleteReply, // ✅ Import deleteReply
 } from "../controllers/forumController.js";
-import { protect } from "../middleware/authMiddleware.js"; // Import middleware bảo vệ
+import { protect, protectOptional } from "../middleware/authMiddleware.js"; // Import middleware bảo vệ
 import {
   cacheCategories,
   cacheThreadList,
@@ -47,7 +47,7 @@ router
   );
 
 // Route để xem thread detail
-router.route("/threads/:slug").get(getThreadBySlug); // Lấy chi tiết thread bằng slug
+router.route("/threads/:slug").get(protectOptional, getThreadBySlug); // Lấy chi tiết thread bằng slug
 
 // === Reply Routes ===
 router

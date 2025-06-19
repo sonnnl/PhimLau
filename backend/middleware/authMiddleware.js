@@ -64,42 +64,36 @@ const admin = (req, res, next) => {
   }
 };
 
-// Optional Auth: Middleware để optional check user (không bắt buộc login)
-// Nếu có token hợp lệ thì set req.user, nếu không thì tiếp tục với req.user = null
-const optionalAuth = asyncHandler(async (req, res, next) => {
+// Middleware xác thực người dùng tùy chọn
+const protectOptional = asyncHandler(async (req, res, next) => {
   let token;
 
+  // Kiểm tra header Authorization
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")
   ) {
     try {
-      // Get token from header
+      // Lấy token từ header
       token = req.headers.authorization.split(" ")[1];
 
-      // Verify token
+      // Xác thực token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Get user from the token
+      // Lấy thông tin người dùng từ token (không lấy mật khẩu)
       req.user = await User.findById(decoded.id).select("-password");
 
-      // Kiểm tra trạng thái tài khoản - nếu không hợp lệ thì set user = null
-      if (
-        req.user &&
-        (req.user.status === "suspended" ||
-          req.user.status === "banned" ||
-          req.user.status === "inactive")
-      ) {
-        req.user = null;
-      }
+      next();
     } catch (error) {
-      // Token không hợp lệ - không báo lỗi, chỉ set user = null
-      req.user = null;
+      // Nếu token không hợp lệ, không báo lỗi mà chỉ không gắn req.user
+      // Điều này cho phép người dùng chưa đăng nhập vẫn truy cập được
+      console.log("Optional auth: Invalid token, proceeding as guest.");
+      next();
     }
+  } else {
+    // Không có token, tiếp tục như một khách
+    next();
   }
-
-  // Không có token hoặc token không hợp lệ - tiếp tục với user = null
-  next();
 });
 
-export { protect, admin, optionalAuth };
+export { protect, admin, protectOptional };
